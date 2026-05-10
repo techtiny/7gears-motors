@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Users, Car, Wrench, Search, Phone, Megaphone, CalendarDays, Star, MapPin } from 'lucide-react';
 
-const LOGO = 'https://7gearsmotors.in/wp-content/uploads/elementor/thumbs/WhatsApp-Image-2025-02-05-at-11.21.26_d1a9f6c9-e1739175114231-r1xog0w43cclc9sta3e279sa9ofvd722a8nef3t018.jpg';
+const LOGO = '/logo.png';
 
 const NAV_SECTIONS = [
   {
@@ -47,7 +47,7 @@ export default function Sidebar({ open, onClose }) {
 
         {/* Logo */}
         <div className="sidebar-logo">
-          <img src={LOGO} alt="7Gears" onError={e => { e.target.style.display = 'none'; }} />
+          <img src={LOGO} alt="7Gears" style={{ borderRadius: 10, objectFit: 'contain', background: '#C0392B' }} onError={e => { e.target.style.display = 'none'; }} />
           <div className="sidebar-logo-text">
             <h2>7GEARS MOTORS</h2>
             <span>Service Tracker</span>

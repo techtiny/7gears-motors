@@ -5,7 +5,7 @@ import StatusStepper from '../components/StatusStepper';
 import { Search, Phone, Car } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const LOGO = 'https://7gearsmotors.in/wp-content/uploads/elementor/thumbs/WhatsApp-Image-2025-02-05-at-11.21.26_d1a9f6c9-e1739175114231-r1xog0w43cclc9sta3e279sa9ofvd722a8nef3t018.jpg';
+const LOGO = '/logo.png';
 
 const STATUS_LABEL = {
   RECEIVED: 'Received', INSPECTING: 'Inspecting', AWAITING_APPROVAL: 'Awaiting Approval',
