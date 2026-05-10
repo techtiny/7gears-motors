@@ -16,6 +16,7 @@ public class CorsConfig {
         config.addAllowedOrigin("http://localhost:5174");
         config.addAllowedOrigin("http://localhost:3000");
         config.addAllowedOrigin("https://7gears-motors-production.up.railway.app");
+        config.addAllowedOrigin("https://7gears-motors.up.railway.app");
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
         config.setAllowCredentials(true);
