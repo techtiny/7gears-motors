@@ -1,0 +1,22 @@
+# Backend
+backend/target/
+backend/.mvn/
+backend/uploads/
+*.class
+*.jar
+*.war
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# WhatsApp Gateway
+whatsapp-gateway/node_modules/
+whatsapp-gateway/.wwebjs_auth/
+whatsapp-gateway/.wwebjs_cache/
+
+# General
+.DS_Store
+*.log
+.env
