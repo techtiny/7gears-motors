@@ -74,10 +74,7 @@ export default function ServiceDetail() {
     loadJob();
     jobApi.getDashboard().then(() => {}).catch(() => {});
     // Check WhatsApp status
-    fetch('/api/jobs/whatsapp-status')
-      .then(r => r.json())
-      .then(d => setWaEnabled(d.enabled))
-      .catch(() => {});
+    jobApi.getWhatsappStatus().then(r => setWaEnabled(r.data.enabled)).catch(() => {});
   }, [id]);
 
   useEffect(() => { scrollToBottom(); }, [updates]);
@@ -137,13 +134,12 @@ export default function ServiceDetail() {
     if (sending_wa) return;
     setSendingWa(updateId);
     try {
-      const r = await fetch(`/api/jobs/${id}/updates/${updateId}/send-whatsapp`, { method: 'POST' });
-      if (!r.ok) throw new Error(await r.text());
-      const updated = await r.json();
+      const { data: updated } = await jobApi.sendWhatsapp(id, updateId);
       setUpdates(prev => prev.map(u => u.id === updateId ? updated : u));
       toast.success('WhatsApp message sent to customer!', { icon: '📱' });
     } catch (err) {
-      toast.error('WhatsApp send failed: ' + (err.message || 'Unknown error'));
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Unknown error';
+      toast.error('WhatsApp send failed: ' + msg);
     } finally {
       setSendingWa(null);
     }
