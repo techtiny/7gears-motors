@@ -55,6 +55,8 @@ client.on('auth_failure', (msg) => {
 });
 
 // ── REST API ───────────────────────────────────────────────────
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
 app.get('/status', (_req, res) => {
   res.json({
     ready: clientReady,
