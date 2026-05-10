@@ -20,3 +20,4 @@ whatsapp-gateway/.wwebjs_cache/
 .DS_Store
 *.log
 .env
+sevengears_db.sql
