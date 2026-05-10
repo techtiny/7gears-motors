@@ -35,7 +35,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsSource()))
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/auth/**", "/api/health").permitAll()
                 .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/favicon.png", "/logo/**", "/icons/**").permitAll()
                 .anyRequest().authenticated()
             )
