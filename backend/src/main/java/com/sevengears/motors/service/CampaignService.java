@@ -33,8 +33,10 @@ public class CampaignService {
         this.whatsAppService = whatsAppService;
     }
 
+    @Transactional(readOnly = true)
     public List<Campaign> findAll() { return campaignRepository.findAllByOrderByCreatedAtDesc(); }
 
+    @Transactional(readOnly = true)
     public Campaign findById(Long id) {
         return campaignRepository.findById(id).orElseThrow(() -> new RuntimeException("Campaign not found: " + id));
     }

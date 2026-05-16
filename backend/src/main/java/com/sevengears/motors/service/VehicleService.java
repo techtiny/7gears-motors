@@ -22,19 +22,23 @@ public class VehicleService {
         this.customerRepository = customerRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<VehicleDTO> findAll() {
         return vehicleRepository.findAll().stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public VehicleDTO findById(Long id) {
         return toDTO(vehicleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found: " + id)));
     }
 
+    @Transactional(readOnly = true)
     public List<VehicleDTO> findByCustomer(Long customerId) {
         return vehicleRepository.findByCustomerId(customerId).stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<VehicleDTO> search(String query) {
         return vehicleRepository.search(query).stream().map(this::toDTO).collect(Collectors.toList());
     }

@@ -44,11 +44,13 @@ public class ServiceJobService {
         this.whatsAppService = whatsAppService;
     }
 
+    @Transactional(readOnly = true)
     public List<ServiceJobDTO> findAll() {
         return jobRepository.findAllOrderByCreatedAtDesc().stream()
                 .map(this::toDTO).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public ServiceJobDTO findById(Long id) {
         ServiceJob job = jobRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service job not found: " + id));
@@ -58,6 +60,7 @@ public class ServiceJobService {
         return dto;
     }
 
+    @Transactional(readOnly = true)
     public ServiceJobDTO findByJobNumber(String jobNumber) {
         ServiceJob job = jobRepository.findByJobNumber(jobNumber)
                 .orElseThrow(() -> new RuntimeException("Job not found: " + jobNumber));
@@ -67,11 +70,13 @@ public class ServiceJobService {
         return dto;
     }
 
+    @Transactional(readOnly = true)
     public List<ServiceJobDTO> findByStatus(ServiceStatus status) {
         return jobRepository.findByStatusOrderByCreatedAtDesc(status).stream()
                 .map(this::toDTO).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ServiceJobDTO> search(String query) {
         return jobRepository.search(query).stream().map(this::toDTO).collect(Collectors.toList());
     }
@@ -199,6 +204,7 @@ public class ServiceJobService {
         }
     }
 
+    @Transactional(readOnly = true)
     public DashboardDTO getDashboard() {
         DashboardDTO dash = new DashboardDTO();
         dash.setTotalJobs(jobRepository.count());

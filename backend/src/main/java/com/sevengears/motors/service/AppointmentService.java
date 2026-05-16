@@ -27,11 +27,16 @@ public class AppointmentService {
         this.whatsAppService = whatsAppService;
     }
 
+    @Transactional(readOnly = true)
     public List<Appointment> findAll() { return appointmentRepository.findAll(); }
+    @Transactional(readOnly = true)
     public List<Appointment> findByDate(LocalDate date) { return appointmentRepository.findByAppointmentDateOrderByAppointmentTimeAsc(date); }
+    @Transactional(readOnly = true)
     public List<Appointment> findByRange(LocalDate from, LocalDate to) { return appointmentRepository.findByAppointmentDateBetweenOrderByAppointmentDateAscAppointmentTimeAsc(from, to); }
+    @Transactional(readOnly = true)
     public List<Appointment> findByCustomer(Long customerId) { return appointmentRepository.findByCustomerIdOrderByAppointmentDateDesc(customerId); }
 
+    @Transactional(readOnly = true)
     public Appointment findById(Long id) {
         return appointmentRepository.findById(id).orElseThrow(() -> new RuntimeException("Appointment not found: " + id));
     }

@@ -24,6 +24,7 @@ public class FeedbackService {
         this.whatsAppService = whatsAppService;
     }
 
+    @Transactional(readOnly = true)
     public List<FeedbackDTO> findAll() {
         return feedbackRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(f -> new FeedbackDTO(
@@ -37,6 +38,7 @@ public class FeedbackService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> stats() {
         Double avg = feedbackRepository.averageRating();
         long positive = feedbackRepository.countPositive();
