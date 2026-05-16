@@ -18,16 +18,19 @@ public class CustomerService {
         this.customerRepository = customerRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<CustomerDTO> findAll() {
         return customerRepository.findAll().stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public CustomerDTO findById(Long id) {
         Customer c = customerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer not found: " + id));
         return toDTO(c);
     }
 
+    @Transactional(readOnly = true)
     public List<CustomerDTO> search(String query) {
         return customerRepository.search(query).stream().map(this::toDTO).collect(Collectors.toList());
     }
