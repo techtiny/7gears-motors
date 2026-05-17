@@ -69,9 +69,14 @@ public class ServiceJobController {
     }
 
     @PostMapping("/{id}/updates/{updateId}/send-whatsapp")
-    public ResponseEntity<ServiceUpdateDTO> sendWhatsApp(@PathVariable Long id,
-                                                          @PathVariable Long updateId) {
-        return ResponseEntity.ok(jobService.sendWhatsApp(id, updateId));
+    public ResponseEntity<?> sendWhatsApp(@PathVariable Long id,
+                                          @PathVariable Long updateId) {
+        try {
+            return ResponseEntity.ok(jobService.sendWhatsApp(id, updateId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(503)
+                    .body(java.util.Map.of("error", e.getMessage()));
+        }
     }
 
     @GetMapping("/whatsapp-status")
