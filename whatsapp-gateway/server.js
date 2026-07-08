@@ -7,6 +7,16 @@ const PORT = process.env.PORT || 9091;
 
 app.use(express.json());
 
+// Keep process alive on unhandled Puppeteer/protocol errors
+process.on('uncaughtException', (err) => {
+  console.error('⚠️  Uncaught exception (gateway stays alive):', err.message);
+  clientReady = false;
+  setTimeout(() => initClient(), 5000);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️  Unhandled rejection (gateway stays alive):', reason?.message || reason);
+});
+
 let clientReady = false;
 let lastQR      = null;
 let qrTimestamp = null;
@@ -202,6 +212,15 @@ function normalizePhone(phone) {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+function initClient() {
+  console.log('⏳ Initializing WhatsApp client...\n');
+  client.initialize().catch(err => {
+    console.error('⚠️  client.initialize() failed:', err.message);
+    clientReady = false;
+    setTimeout(() => initClient(), 10000);
+  });
+}
+
 // ── Start ──────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🔧 7GEARS MOTORS WhatsApp Gateway`);
@@ -210,7 +229,5 @@ app.listen(PORT, () => {
   console.log(`   Status    → GET  /status`);
   console.log(`   Send      → POST /send  { "to": "9876543210", "message": "..." }`);
   console.log(`   Bulk Send → POST /send-bulk`);
-  console.log('\n⏳ Initializing WhatsApp client...\n');
+  initClient();
 });
-
-client.initialize();

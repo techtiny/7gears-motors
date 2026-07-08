@@ -7,15 +7,21 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import java.io.IOException;
-
 @Controller
 public class SpaController {
 
     private final byte[] indexHtml;
 
-    public SpaController() throws IOException {
-        this.indexHtml = new ClassPathResource("static/index.html").getInputStream().readAllBytes();
+    public SpaController() {
+        byte[] bytes = null;
+        try {
+            ClassPathResource resource = new ClassPathResource("static/index.html");
+            if (resource.exists()) {
+                bytes = resource.getInputStream().readAllBytes();
+            }
+        } catch (Exception ignored) {
+        }
+        this.indexHtml = bytes;
     }
 
     @RequestMapping(value = {
@@ -24,7 +30,10 @@ public class SpaController {
         "/{path:^(?!api|assets|favicon|logo|icons|serve).*$}/**"
     })
     @ResponseBody
-    public ResponseEntity<byte[]> spa() {
+    public ResponseEntity<?> spa() {
+        if (indexHtml == null) {
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.ok()
             .contentType(MediaType.TEXT_HTML)
             .contentLength(indexHtml.length)
