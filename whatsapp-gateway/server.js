@@ -21,12 +21,17 @@ let clientReady = false;
 let lastQR      = null;
 let qrTimestamp = null;
 
+const puppeteerArgs = {
+  headless: true,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+};
+if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+  puppeteerArgs.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+}
+
 const client = new Client({
   authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
-  puppeteer: {
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-  },
+  puppeteer: puppeteerArgs,
 });
 
 // ── WhatsApp events ────────────────────────────────────────────
