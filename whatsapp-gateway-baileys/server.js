@@ -23,6 +23,7 @@ let connecting    = false;
 let watchdogTimer = null;
 let dbPool        = null;
 let authState     = null;
+let lastError     = null;
 
 const logger = pino({ level: 'silent' });
 
@@ -38,12 +39,20 @@ async function getAuthState() {
         connectionLimit: 5,
         ssl: { rejectUnauthorized: false },
       });
-      console.log('🗄️  Using MySQL for WhatsApp session persistence');
     }
-    return useMySQLAuthState(dbPool);
+    // Verify connection before proceeding
+    try {
+      await dbPool.execute('SELECT 1');
+      console.log('🗄️  MySQL connected — session will persist across restarts');
+    } catch (err) {
+      console.error('❌ MySQL connection failed:', err.message);
+      console.warn('⚠️  Falling back to file-based auth (session will reset on restart)');
+      dbPool = null;
+    }
+    if (dbPool) return useMySQLAuthState(dbPool);
   }
 
-  // local fallback: file-based
+  // file-based auth (local dev or MySQL fallback)
   const AUTH_PATH = process.env.AUTH_PATH || './auth_info';
   try { fs.mkdirSync(AUTH_PATH, { recursive: true }); } catch (_) {}
   console.log(`📁 Using file auth: ${AUTH_PATH}`);
@@ -144,6 +153,7 @@ async function connectToWhatsApp() {
 
   } catch (err) {
     connecting = false;
+    lastError = err.message;
     console.error('⚠️  connectToWhatsApp error:', err.message);
     setTimeout(() => connectToWhatsApp(), 10000);
   }
@@ -157,7 +167,9 @@ app.get('/status', (_req, res) => {
   res.json({
     ready: clientReady,
     qrPending: !!lastQR,
-    storage: process.env.DATABASE_URL ? 'mysql' : 'file',
+    connecting,
+    lastError,
+    storage: dbPool ? 'mysql' : 'file',
     info: clientReady && sock?.user
       ? { name: sock.user.name, number: sock.user.id }
       : null,
@@ -181,14 +193,20 @@ app.get('/qr', async (_req, res) => {
       <p>Session is saved in MySQL — no re-scan needed on restart.</p></body></html>`);
   }
   if (!lastQR) {
+    const errHtml = lastError
+      ? `<div style="margin-top:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:12px;color:#991b1b;max-width:340px;word-break:break-all;">
+           <strong>Last error:</strong> ${lastError}
+         </div>`
+      : '';
     return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8">
       <title>7GEARS MOTORS — WhatsApp QR</title>
-      <meta http-equiv="refresh" content="3">
+      <meta http-equiv="refresh" content="4">
       <style>body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;background:#fffbeb;}
       .badge{background:#f59e0b;color:white;padding:14px 32px;border-radius:12px;font-size:18px;font-weight:700;}
       p{color:#92400e;margin-top:12px;font-size:14px;}</style></head>
       <body><div class="badge">⏳ Initializing WhatsApp...</div>
-      <p>Page auto-refreshes. QR will appear shortly.</p></body></html>`);
+      <p>Page auto-refreshes. QR will appear shortly.</p>
+      ${errHtml}</body></html>`);
   }
   try {
     const qrDataUrl = await qrcode.toDataURL(lastQR, { width: 300 });
