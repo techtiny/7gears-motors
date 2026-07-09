@@ -6,35 +6,54 @@ const {
 } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const express = require('express');
-const qrcode   = require('qrcode');
-const pino     = require('pino');
-const fs       = require('fs');
+const qrcode  = require('qrcode');
+const pino    = require('pino');
+const fs      = require('fs');
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
-
-// Auth stored on persistent volume (Railway: mount /data as volume, set AUTH_PATH=/data/auth_info)
-// Falls back to local ./auth_info for dev
-const AUTH_PATH = process.env.AUTH_PATH || './auth_info';
-
-try { fs.mkdirSync(AUTH_PATH, { recursive: true }); } catch (_) {}
-
 app.use(express.json());
 
-let sock         = null;
-let clientReady  = false;
-let lastQR       = null;
-let qrTimestamp  = null;
-let qrCount      = 0;
-let connecting   = false;
+let sock          = null;
+let clientReady   = false;
+let lastQR        = null;
+let qrTimestamp   = null;
+let qrCount       = 0;
+let connecting    = false;
 let watchdogTimer = null;
+let dbPool        = null;
+let authState     = null;
 
 const logger = pino({ level: 'silent' });
 
+// ── Auth setup ─────────────────────────────────────────────────────────────
+async function getAuthState() {
+  if (process.env.DATABASE_URL) {
+    const mysql = require('mysql2/promise');
+    const { useMySQLAuthState } = require('./mysqlAuthState');
+    if (!dbPool) {
+      dbPool = mysql.createPool({
+        uri: process.env.DATABASE_URL,
+        waitForConnections: true,
+        connectionLimit: 5,
+        ssl: { rejectUnauthorized: false },
+      });
+      console.log('🗄️  Using MySQL for WhatsApp session persistence');
+    }
+    return useMySQLAuthState(dbPool);
+  }
+
+  // local fallback: file-based
+  const AUTH_PATH = process.env.AUTH_PATH || './auth_info';
+  try { fs.mkdirSync(AUTH_PATH, { recursive: true }); } catch (_) {}
+  console.log(`📁 Using file auth: ${AUTH_PATH}`);
+  return useMultiFileAuthState(AUTH_PATH);
+}
+
+// ── Watchdog ───────────────────────────────────────────────────────────────
 function clearWatchdog() {
   if (watchdogTimer) { clearInterval(watchdogTimer); watchdogTimer = null; }
 }
-
 function startWatchdog() {
   clearWatchdog();
   watchdogTimer = setInterval(() => {
@@ -45,17 +64,18 @@ function startWatchdog() {
   }, 30000);
 }
 
+// ── Connect ────────────────────────────────────────────────────────────────
 async function connectToWhatsApp() {
   if (connecting) return;
   connecting = true;
 
   try {
-    const { state, saveCreds } = await useMultiFileAuthState(AUTH_PATH);
+    authState = await getAuthState();
     const { version } = await fetchLatestBaileysVersion();
 
     sock = makeWASocket({
       version,
-      auth: state,
+      auth: authState.state,
       logger,
       printQRInTerminal: false,
       browser: ['7Gears Motors', 'Chrome', '1.0.0'],
@@ -65,9 +85,9 @@ async function connectToWhatsApp() {
       retryRequestDelayMs: 2000,
     });
 
-    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('creds.update', authState.saveCreds);
 
-    sock.ev.on('connection.update', (update) => {
+    sock.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect, qr } = update;
 
       if (qr) {
@@ -87,15 +107,20 @@ async function connectToWhatsApp() {
       if (connection === 'close') {
         clientReady = false;
         connecting  = false;
+        clearWatchdog();
         const statusCode = (lastDisconnect?.error instanceof Boom)
           ? lastDisconnect.error.output?.statusCode
           : null;
         const loggedOut = statusCode === DisconnectReason.loggedOut;
 
         if (loggedOut) {
-          console.warn('🚪 Logged out by WhatsApp — clearing auth, rescan QR.');
-          try { fs.rmSync(AUTH_PATH, { recursive: true, force: true }); } catch (_) {}
-          try { fs.mkdirSync(AUTH_PATH, { recursive: true }); } catch (_) {}
+          console.warn('🚪 Logged out by WhatsApp — clearing session, please rescan QR.');
+          if (dbPool) {
+            try { await dbPool.execute('DELETE FROM whatsapp_auth'); } catch (_) {}
+          } else {
+            const AUTH_PATH = process.env.AUTH_PATH || './auth_info';
+            try { fs.rmSync(AUTH_PATH, { recursive: true, force: true }); } catch (_) {}
+          }
           qrCount = 0;
           setTimeout(() => connectToWhatsApp(), 2000);
         } else {
@@ -110,8 +135,9 @@ async function connectToWhatsApp() {
         lastQR      = null;
         qrCount     = 0;
         connecting  = false;
+        const storage = process.env.DATABASE_URL ? 'MySQL' : 'local file';
         console.log(`\n✅ WhatsApp connected: ${sock.user?.name} (${sock.user?.id})`);
-        console.log(`   Auth saved to: ${AUTH_PATH}\n`);
+        console.log(`   Session stored in: ${storage}\n`);
         startWatchdog();
       }
     });
@@ -131,7 +157,7 @@ app.get('/status', (_req, res) => {
   res.json({
     ready: clientReady,
     qrPending: !!lastQR,
-    authPath: AUTH_PATH,
+    storage: process.env.DATABASE_URL ? 'mysql' : 'file',
     info: clientReady && sock?.user
       ? { name: sock.user.name, number: sock.user.id }
       : null,
@@ -139,8 +165,8 @@ app.get('/status', (_req, res) => {
 });
 
 app.get('/qr.json', (_req, res) => {
-  if (clientReady)  return res.json({ status: 'connected' });
-  if (!lastQR)      return res.json({ status: 'initializing' });
+  if (clientReady) return res.json({ status: 'connected' });
+  if (!lastQR)     return res.json({ status: 'initializing' });
   res.json({ status: 'pending', qr: lastQR, generatedAt: qrTimestamp });
 });
 
@@ -152,9 +178,8 @@ app.get('/qr', async (_req, res) => {
       .badge{background:#22c55e;color:white;padding:14px 32px;border-radius:12px;font-size:20px;font-weight:700;}
       p{color:#166534;margin-top:12px;font-size:15px;}</style></head>
       <body><div class="badge">✅ WhatsApp Connected</div>
-      <p>Session is active and persistent. No re-scan needed.</p></body></html>`);
+      <p>Session is saved in MySQL — no re-scan needed on restart.</p></body></html>`);
   }
-
   if (!lastQR) {
     return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8">
       <title>7GEARS MOTORS — WhatsApp QR</title>
@@ -165,7 +190,6 @@ app.get('/qr', async (_req, res) => {
       <body><div class="badge">⏳ Initializing WhatsApp...</div>
       <p>Page auto-refreshes. QR will appear shortly.</p></body></html>`);
   }
-
   try {
     const qrDataUrl = await qrcode.toDataURL(lastQR, { width: 300 });
     res.send(`<!DOCTYPE html>
@@ -187,7 +211,8 @@ app.get('/qr', async (_req, res) => {
     .steps { text-align: left; background: #fff7ed; border-radius: 12px; padding: 16px 18px; }
     .steps p { font-size: 13px; color: #374151; line-height: 2; }
     .steps strong { color: #f97316; }
-    .refresh { font-size: 11px; color: #9ca3af; margin-top: 16px; }
+    .note { font-size: 12px; color: #6b7280; margin-top: 14px; background: #f0fdf4; border-radius: 8px; padding: 8px 12px; }
+    .refresh { font-size: 11px; color: #9ca3af; margin-top: 12px; }
     .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
            background: #f59e0b; animation: blink 1.2s infinite; margin-right: 6px; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
@@ -196,7 +221,7 @@ app.get('/qr', async (_req, res) => {
 <body>
   <div class="card">
     <h1>7GEARS MOTORS</h1>
-    <p class="sub"><span class="dot"></span>WhatsApp Link — Scan to Connect</p>
+    <p class="sub"><span class="dot"></span>WhatsApp Link — Scan Once, Stay Connected</p>
     <div id="qrcode"><img src="${qrDataUrl}" width="260" height="260" /></div>
     <div class="steps">
       <p>1. Open <strong>WhatsApp</strong> on your phone</p>
@@ -204,6 +229,7 @@ app.get('/qr', async (_req, res) => {
       <p>3. Tap <strong>Link a Device</strong></p>
       <p>4. <strong>Scan this QR code</strong></p>
     </div>
+    <div class="note">✅ Session saved in MySQL — no re-scan on restarts</div>
     <p class="refresh">QR auto-refreshes every 25 sec · ${qrTimestamp}</p>
   </div>
 </body>
@@ -217,11 +243,9 @@ app.post('/send', async (req, res) => {
   const { to, message } = req.body;
   if (!clientReady) return res.status(503).json({ error: 'WhatsApp not connected. Scan QR code first.' });
   if (!to || !message) return res.status(400).json({ error: 'to and message are required' });
-
   try {
-    const phone = normalizePhone(to);
-    const jid   = `${phone}@s.whatsapp.net`;
-    const result = await sock.sendMessage(jid, { text: message });
+    const phone  = normalizePhone(to);
+    const result = await sock.sendMessage(`${phone}@s.whatsapp.net`, { text: message });
     console.log(`📱 Sent to +${phone} | MsgID: ${result.key.id}`);
     res.json({ success: true, messageId: result.key.id, to: phone });
   } catch (err) {
@@ -233,7 +257,6 @@ app.post('/send', async (req, res) => {
 app.post('/send-bulk', async (req, res) => {
   const { messages } = req.body;
   if (!clientReady) return res.status(503).json({ error: 'WhatsApp not connected' });
-
   const results = [];
   for (const item of messages) {
     try {
@@ -254,16 +277,15 @@ function normalizePhone(phone) {
   if (digits.length === 10) return '91' + digits;
   return digits;
 }
-
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ── Start ──────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🔧 7GEARS MOTORS WhatsApp Gateway (Baileys)`);
-  console.log(`   Auth path → ${AUTH_PATH}`);
+  console.log(`   Storage   → ${process.env.DATABASE_URL ? 'MySQL (persistent)' : 'File (local)'}`);
   console.log(`   Status    → GET  /status`);
   console.log(`   QR        → GET  /qr`);
-  console.log(`   Send      → POST /send  { "to": "9876543210", "message": "..." }`);
+  console.log(`   Send      → POST /send`);
   console.log(`   Port      → ${PORT}\n`);
   connectToWhatsApp();
 });
