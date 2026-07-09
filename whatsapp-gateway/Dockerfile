@@ -15,5 +15,5 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 COPY server.js .
 
-EXPOSE 9091
+EXPOSE 8080
 CMD ["node", "server.js"]
