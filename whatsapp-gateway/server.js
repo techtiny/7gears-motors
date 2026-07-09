@@ -23,7 +23,20 @@ let qrTimestamp = null;
 
 const puppeteerArgs = {
   headless: true,
-  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--no-zygote',
+    '--single-process',
+    '--no-first-run',
+    '--disable-extensions',
+    '--disable-background-networking',
+    '--disable-default-apps',
+    '--disable-sync',
+    '--mute-audio',
+  ],
 };
 if (process.env.PUPPETEER_EXECUTABLE_PATH) {
   puppeteerArgs.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
