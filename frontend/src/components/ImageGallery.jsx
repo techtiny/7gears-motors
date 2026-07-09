@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
-import { Upload, X, ZoomIn, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
+import { X, ZoomIn, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import api from '../api';
 
 function Lightbox({ images, startIndex, onClose }) {
   const [idx, setIdx] = useState(startIndex);
@@ -54,7 +54,7 @@ function UploadZone({ jobId, type, images, onUploaded, onDelete }) {
         const fd = new FormData();
         fd.append('file', file);
         fd.append('type', type);
-        await axios.post(`/api/jobs/${jobId}/images`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.post(`/jobs/${jobId}/images`, fd);
         uploaded++;
       } catch (e) {
         toast.error(`Failed to upload ${file.name}`);
@@ -72,7 +72,7 @@ function UploadZone({ jobId, type, images, onUploaded, onDelete }) {
   const handleDelete = async (img) => {
     if (!window.confirm('Remove this image?')) return;
     try {
-      await axios.delete(`/api/jobs/${jobId}/images/${img.id}`);
+      await api.delete(`/jobs/${jobId}/images/${img.id}`);
       toast.success('Image removed');
       onDelete();
     } catch { toast.error('Failed to remove image'); }
@@ -146,10 +146,10 @@ export default function ImageGallery({ jobId, onRefresh }) {
 
   const load = async () => {
     try {
-      const r = await axios.get(`/api/jobs/${jobId}/images`);
+      const r = await api.get(`/jobs/${jobId}/images`);
       const all = r.data.map(img => ({
         ...img,
-        url: `/api/jobs/${jobId}/images/${img.fileName}`
+        url: `${api.defaults.baseURL}/jobs/${jobId}/images/${img.fileName}`
       }));
       setBeforeImages(all.filter(i => i.imageType === 'BEFORE'));
       setAfterImages(all.filter(i => i.imageType === 'AFTER'));
