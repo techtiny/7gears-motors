@@ -49,12 +49,19 @@ function UploadZone({ jobId, type, images, onUploaded, onDelete }) {
     if (!files.length) return;
     setUploading(true);
     let uploaded = 0;
+    const token = localStorage.getItem('token');
+    const baseURL = import.meta.env.VITE_API_URL ?? '/api';
     for (const file of Array.from(files)) {
       try {
         const fd = new FormData();
         fd.append('file', file);
         fd.append('type', type);
-        await api.post(`/jobs/${jobId}/images`, fd);
+        const res = await fetch(`${baseURL}/jobs/${jobId}/images`, {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: fd,
+        });
+        if (!res.ok) throw new Error(res.status);
         uploaded++;
       } catch (e) {
         toast.error(`Failed to upload ${file.name}`);
