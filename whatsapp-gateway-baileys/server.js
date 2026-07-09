@@ -8,36 +8,61 @@ const { Boom } = require('@hapi/boom');
 const express = require('express');
 const qrcode   = require('qrcode');
 const pino     = require('pino');
+const fs       = require('fs');
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
+
+// Auth stored on persistent volume (Railway: mount /data as volume, set AUTH_PATH=/data/auth_info)
+// Falls back to local ./auth_info for dev
+const AUTH_PATH = process.env.AUTH_PATH || './auth_info';
+
+try { fs.mkdirSync(AUTH_PATH, { recursive: true }); } catch (_) {}
+
 app.use(express.json());
 
 let sock         = null;
 let clientReady  = false;
 let lastQR       = null;
 let qrTimestamp  = null;
-let reconnecting = false;
+let qrCount      = 0;
+let connecting   = false;
+let watchdogTimer = null;
 
 const logger = pino({ level: 'silent' });
 
+function clearWatchdog() {
+  if (watchdogTimer) { clearInterval(watchdogTimer); watchdogTimer = null; }
+}
+
+function startWatchdog() {
+  clearWatchdog();
+  watchdogTimer = setInterval(() => {
+    if (!clientReady && !connecting) {
+      console.log('⚠️  Watchdog: not connected — reconnecting...');
+      connectToWhatsApp();
+    }
+  }, 30000);
+}
+
 async function connectToWhatsApp() {
-  if (reconnecting) return;
-  reconnecting = true;
+  if (connecting) return;
+  connecting = true;
 
   try {
-    const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
+    const { state, saveCreds } = await useMultiFileAuthState(AUTH_PATH);
     const { version } = await fetchLatestBaileysVersion();
 
     sock = makeWASocket({
       version,
       auth: state,
       logger,
-      printQRInTerminal: true,
+      printQRInTerminal: false,
       browser: ['7Gears Motors', 'Chrome', '1.0.0'],
       connectTimeoutMs: 60000,
       defaultQueryTimeoutMs: 60000,
-      keepAliveIntervalMs: 10000,
+      keepAliveIntervalMs: 15000,
+      retryRequestDelayMs: 2000,
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -49,38 +74,56 @@ async function connectToWhatsApp() {
         lastQR      = qr;
         qrTimestamp = new Date().toISOString();
         clientReady = false;
-        console.log('\n========================================');
-        console.log(' Scan QR at /qr in your browser');
-        console.log('========================================\n');
+        qrCount++;
+        if (qrCount === 1) {
+          console.log('\n========================================');
+          console.log(' Scan QR at /qr in your browser');
+          console.log('========================================\n');
+        } else {
+          console.log(`🔄 QR refreshed (#${qrCount}) — open /qr to scan`);
+        }
       }
 
       if (connection === 'close') {
-        clientReady  = false;
-        reconnecting = false;
-        const code = (lastDisconnect?.error instanceof Boom)
+        clientReady = false;
+        connecting  = false;
+        const statusCode = (lastDisconnect?.error instanceof Boom)
           ? lastDisconnect.error.output?.statusCode
           : null;
-        const loggedOut = code === DisconnectReason.loggedOut;
-        console.warn(`⚠️  Disconnected (code ${code}). ${loggedOut ? 'Logged out — rescan QR.' : 'Reconnecting in 5s...'}`);
-        if (!loggedOut) setTimeout(() => connectToWhatsApp(), 5000);
+        const loggedOut = statusCode === DisconnectReason.loggedOut;
+
+        if (loggedOut) {
+          console.warn('🚪 Logged out by WhatsApp — clearing auth, rescan QR.');
+          try { fs.rmSync(AUTH_PATH, { recursive: true, force: true }); } catch (_) {}
+          try { fs.mkdirSync(AUTH_PATH, { recursive: true }); } catch (_) {}
+          qrCount = 0;
+          setTimeout(() => connectToWhatsApp(), 2000);
+        } else {
+          const delay = statusCode === 408 ? 10000 : 5000;
+          console.warn(`⚠️  Disconnected (code ${statusCode}). Reconnecting in ${delay / 1000}s...`);
+          setTimeout(() => connectToWhatsApp(), delay);
+        }
       }
 
       if (connection === 'open') {
-        clientReady  = true;
-        lastQR       = null;
-        reconnecting = false;
-        console.log(`\n✅ WhatsApp ready! Connected as: ${sock.user?.name} (${sock.user?.id})\n`);
+        clientReady = true;
+        lastQR      = null;
+        qrCount     = 0;
+        connecting  = false;
+        console.log(`\n✅ WhatsApp connected: ${sock.user?.name} (${sock.user?.id})`);
+        console.log(`   Auth saved to: ${AUTH_PATH}\n`);
+        startWatchdog();
       }
     });
 
   } catch (err) {
-    reconnecting = false;
-    console.error('⚠️  connectToWhatsApp failed:', err.message);
+    connecting = false;
+    console.error('⚠️  connectToWhatsApp error:', err.message);
     setTimeout(() => connectToWhatsApp(), 10000);
   }
 }
 
-// ── REST API ───────────────────────────────────────────────────
+// ── REST API ───────────────────────────────────────────────────────────────
 app.get('/', (_req, res) => res.json({ status: 'ok', service: '7Gears WhatsApp Gateway (Baileys)' }));
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
@@ -88,6 +131,7 @@ app.get('/status', (_req, res) => {
   res.json({
     ready: clientReady,
     qrPending: !!lastQR,
+    authPath: AUTH_PATH,
     info: clientReady && sock?.user
       ? { name: sock.user.name, number: sock.user.id }
       : null,
@@ -108,7 +152,7 @@ app.get('/qr', async (_req, res) => {
       .badge{background:#22c55e;color:white;padding:14px 32px;border-radius:12px;font-size:20px;font-weight:700;}
       p{color:#166534;margin-top:12px;font-size:15px;}</style></head>
       <body><div class="badge">✅ WhatsApp Connected</div>
-      <p>No QR needed — already authenticated.</p></body></html>`);
+      <p>Session is active and persistent. No re-scan needed.</p></body></html>`);
   }
 
   if (!lastQR) {
@@ -129,7 +173,7 @@ app.get('/qr', async (_req, res) => {
 <head>
   <meta charset="utf-8">
   <title>7GEARS MOTORS — Scan WhatsApp QR</title>
-  <meta http-equiv="refresh" content="30">
+  <meta http-equiv="refresh" content="25">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: sans-serif; background: #fff7ed; min-height: 100vh;
@@ -160,7 +204,7 @@ app.get('/qr', async (_req, res) => {
       <p>3. Tap <strong>Link a Device</strong></p>
       <p>4. <strong>Scan this QR code</strong></p>
     </div>
-    <p class="refresh">QR auto-refreshes every 30 sec · ${qrTimestamp}</p>
+    <p class="refresh">QR auto-refreshes every 25 sec · ${qrTimestamp}</p>
   </div>
 </body>
 </html>`);
@@ -213,12 +257,13 @@ function normalizePhone(phone) {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ── Start ──────────────────────────────────────────────────────
+// ── Start ──────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🔧 7GEARS MOTORS WhatsApp Gateway (Baileys)`);
-  console.log(`   Status → GET  /status`);
-  console.log(`   QR     → GET  /qr`);
-  console.log(`   Send   → POST /send  { "to": "9876543210", "message": "..." }`);
-  console.log(`   Port   → ${PORT}\n`);
+  console.log(`   Auth path → ${AUTH_PATH}`);
+  console.log(`   Status    → GET  /status`);
+  console.log(`   QR        → GET  /qr`);
+  console.log(`   Send      → POST /send  { "to": "9876543210", "message": "..." }`);
+  console.log(`   Port      → ${PORT}\n`);
   connectToWhatsApp();
 });
