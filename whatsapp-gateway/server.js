@@ -29,7 +29,6 @@ const puppeteerArgs = {
     '--disable-dev-shm-usage',
     '--disable-gpu',
     '--no-zygote',
-    '--single-process',
     '--no-first-run',
     '--disable-extensions',
     '--disable-background-networking',
@@ -199,6 +198,11 @@ app.post('/send', async (req, res) => {
     res.json({ success: true, messageId: result.id.id, to: phone });
   } catch (err) {
     console.error('Send failed:', err.message);
+    if (err.message.includes('detached') || err.message.includes('destroyed') || err.message.includes('Target closed')) {
+      console.warn('⚠️  Browser frame crashed — reinitializing client...');
+      clientReady = false;
+      setTimeout(() => initClient(), 3000);
+    }
     res.status(500).json({ error: err.message });
   }
 });
