@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
-import { customerApi } from '../api';
-import { Search, Plus, Edit2, Trash2, Users, Phone, Mail, MapPin } from 'lucide-react';
+import { customerApi, vehicleApi } from '../api';
+import { Search, Plus, Edit2, Trash2, Users, Phone, Mail, MapPin, Car, ChevronRight, ChevronLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
+import MakeModelSelect from '../components/MakeModelSelect';
 
-function CustomerModal({ customer, onClose, onSave }) {
+const FUEL_TYPES = ['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid'];
+const YEARS = Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - i);
+
+function EditCustomerModal({ customer, onClose, onSave }) {
   const [form, setForm] = useState({
-    name: customer?.name || '',
-    phone: customer?.phone || '',
-    email: customer?.email || '',
-    address: customer?.address || '',
+    name: customer.name || '',
+    phone: customer.phone || '',
+    email: customer.email || '',
+    address: customer.address || '',
   });
   const [saving, setSaving] = useState(false);
-
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const submit = async (e) => {
@@ -19,12 +22,11 @@ function CustomerModal({ customer, onClose, onSave }) {
     if (!form.name.trim() || !form.phone.trim()) return toast.error('Name and phone are required');
     setSaving(true);
     try {
-      if (customer?.id) await customerApi.update(customer.id, form);
-      else await customerApi.create(form);
-      toast.success(customer?.id ? 'Customer updated!' : 'Customer added!');
+      await customerApi.update(customer.id, form);
+      toast.success('Customer updated!');
       onSave();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to save customer');
+      toast.error(err?.response?.data?.message || 'Failed to update customer');
     } finally {
       setSaving(false);
     }
@@ -34,7 +36,7 @@ function CustomerModal({ customer, onClose, onSave }) {
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="modal-header">
-          <h3>{customer?.id ? 'Edit Customer' : 'Add Customer'}</h3>
+          <h3>Edit Customer</h3>
           <button className="btn btn-icon btn-outline" onClick={onClose}>✕</button>
         </div>
         <form onSubmit={submit}>
@@ -59,10 +61,176 @@ function CustomerModal({ customer, onClose, onSave }) {
           <div className="modal-footer">
             <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving...' : (customer?.id ? 'Update' : 'Add Customer')}
+              {saving ? 'Saving...' : 'Update Customer'}
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function AddCustomerVehicleModal({ onClose, onSave }) {
+  const [step, setStep] = useState(1);
+  const [cust, setCust] = useState({ name: '', phone: '', email: '', address: '' });
+  const [veh, setVeh] = useState({ registrationNumber: '', make: '', model: '', year: '', color: '', fuelType: '' });
+  const [saving, setSaving] = useState(false);
+
+  const setC = (k, v) => setCust(f => ({ ...f, [k]: v }));
+  const setV = (k, v) => setVeh(f => ({ ...f, [k]: v }));
+
+  const goNext = (e) => {
+    e.preventDefault();
+    if (!cust.name.trim() || !cust.phone.trim()) return toast.error('Name and phone are required');
+    setStep(2);
+  };
+
+  const saveCustomerOnly = async () => {
+    if (!cust.name.trim() || !cust.phone.trim()) return toast.error('Name and phone are required');
+    setSaving(true);
+    try {
+      await customerApi.create(cust);
+      toast.success('Customer added!');
+      onSave();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save customer');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveBoth = async (e) => {
+    e.preventDefault();
+    if (!veh.registrationNumber || !veh.make || !veh.model)
+      return toast.error('Registration, make and model are required');
+    setSaving(true);
+    try {
+      const custRes = await customerApi.create(cust);
+      const newCustomerId = custRes.data.id;
+      await vehicleApi.create({
+        ...veh,
+        customerId: newCustomerId,
+        year: veh.year ? Number(veh.year) : null,
+      });
+      toast.success('Customer & vehicle added!');
+      onSave();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 520 }}>
+        <div className="modal-header">
+          <div>
+            <h3>Add Customer + Vehicle</h3>
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <span style={{
+                padding: '2px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                background: step === 1 ? '#1a1a2e' : '#e5e7eb',
+                color: step === 1 ? 'white' : '#6b7280',
+              }}>
+                <Users size={11} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                1. Customer
+              </span>
+              <span style={{ color: '#9ca3af', fontSize: 12, alignSelf: 'center' }}>→</span>
+              <span style={{
+                padding: '2px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                background: step === 2 ? '#1a1a2e' : '#e5e7eb',
+                color: step === 2 ? 'white' : '#6b7280',
+              }}>
+                <Car size={11} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                2. Vehicle
+              </span>
+            </div>
+          </div>
+          <button className="btn btn-icon btn-outline" onClick={onClose}>✕</button>
+        </div>
+
+        {step === 1 && (
+          <form onSubmit={goNext}>
+            <div className="modal-body">
+              <div className="form-group">
+                <label className="form-label">Full Name *</label>
+                <input className="form-control" value={cust.name} onChange={e => setC('name', e.target.value)} placeholder="Eg: Rajesh Kumar" autoFocus />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Phone Number *</label>
+                <input className="form-control" value={cust.phone} onChange={e => setC('phone', e.target.value)} placeholder="+91 98765 43210" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Email</label>
+                <input className="form-control" type="email" value={cust.email} onChange={e => setC('email', e.target.value)} placeholder="email@example.com" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Address</label>
+                <textarea className="form-control" value={cust.address} onChange={e => setC('address', e.target.value)} placeholder="Full address..." rows={2} />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={saveCustomerOnly} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Customer Only'}
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Next: Add Vehicle <ChevronRight size={15} style={{ marginLeft: 4 }} />
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 2 && (
+          <form onSubmit={saveBoth}>
+            <div className="modal-body">
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#166534', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Users size={14} />
+                <span>Customer: <strong>{cust.name}</strong> — {cust.phone}</span>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Registration Number *</label>
+                <input className="form-control" value={veh.registrationNumber}
+                  onChange={e => setV('registrationNumber', e.target.value.toUpperCase())}
+                  placeholder="TN 01 AB 1234" style={{ textTransform: 'uppercase' }} autoFocus />
+              </div>
+              <MakeModelSelect
+                make={veh.make}
+                model={veh.model}
+                onMakeChange={v => setV('make', v)}
+                onModelChange={v => setV('model', v)}
+              />
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Year</label>
+                  <select className="form-control" value={veh.year} onChange={e => setV('year', e.target.value)}>
+                    <option value="">Select year</option>
+                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Color</label>
+                  <input className="form-control" value={veh.color} onChange={e => setV('color', e.target.value)} placeholder="White, Silver..." />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fuel Type</label>
+                <select className="form-control" value={veh.fuelType} onChange={e => setV('fuelType', e.target.value)}>
+                  <option value="">Select fuel type</option>
+                  {FUEL_TYPES.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={() => setStep(1)}>
+                <ChevronLeft size={15} style={{ marginRight: 4 }} /> Back
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving...' : 'Save Customer & Vehicle'}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
@@ -106,7 +274,7 @@ export default function Customers() {
           <h1>Customers</h1>
           <p>{customers.length} customer{customers.length !== 1 ? 's' : ''} registered</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setModal({})}>
+        <button className="btn btn-primary" onClick={() => setModal('add')}>
           <Plus size={16} /> Add Customer
         </button>
       </div>
@@ -191,8 +359,15 @@ export default function Customers() {
         )}
       </div>
 
-      {modal !== null && (
-        <CustomerModal
+      {modal === 'add' && (
+        <AddCustomerVehicleModal
+          onClose={() => setModal(null)}
+          onSave={() => { setModal(null); load(); }}
+        />
+      )}
+
+      {modal !== null && modal !== 'add' && (
+        <EditCustomerModal
           customer={modal}
           onClose={() => setModal(null)}
           onSave={() => { setModal(null); load(); }}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { vehicleApi, customerApi } from '../api';
 import { Search, Plus, Edit2, Trash2, Car } from 'lucide-react';
 import toast from 'react-hot-toast';
+import MakeModelSelect from '../components/MakeModelSelect';
 
 const FUEL_TYPES = ['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid'];
 const YEARS = Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - i);
@@ -65,16 +66,12 @@ function VehicleModal({ vehicle, onClose, onSave }) {
                 onChange={e => set('registrationNumber', e.target.value.toUpperCase())}
                 placeholder="TN 01 AB 1234" style={{ textTransform: 'uppercase' }} />
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Make *</label>
-                <input className="form-control" value={form.make} onChange={e => set('make', e.target.value)} placeholder="Maruti, Honda..." />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Model *</label>
-                <input className="form-control" value={form.model} onChange={e => set('model', e.target.value)} placeholder="Swift, City..." />
-              </div>
-            </div>
+            <MakeModelSelect
+              make={form.make}
+              model={form.model}
+              onMakeChange={v => set('make', v)}
+              onModelChange={v => set('model', v)}
+            />
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Year</label>
