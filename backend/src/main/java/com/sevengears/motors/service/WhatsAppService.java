@@ -14,7 +14,7 @@ public class WhatsAppService {
 
     private static final Logger log = LoggerFactory.getLogger(WhatsAppService.class);
 
-    @Value("${whatsapp.gateway-url:http://localhost:9091}")
+    @Value("${WHATSAPP_URL:${whatsapp.gateway-url:http://localhost:9091}}")
     private String gatewayUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
