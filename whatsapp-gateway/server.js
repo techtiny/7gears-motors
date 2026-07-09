@@ -83,6 +83,7 @@ client.on('auth_failure', (msg) => {
 });
 
 // ── REST API ───────────────────────────────────────────────────
+app.get('/', (_req, res) => res.json({ status: 'ok', service: '7Gears WhatsApp Gateway' }));
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
 app.get('/status', (_req, res) => {
