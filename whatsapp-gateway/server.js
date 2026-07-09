@@ -23,6 +23,7 @@ let qrTimestamp = null;
 
 const puppeteerArgs = {
   headless: true,
+  protocolTimeout: 120000,
   args: [
     '--no-sandbox',
     '--disable-setuid-sandbox',
