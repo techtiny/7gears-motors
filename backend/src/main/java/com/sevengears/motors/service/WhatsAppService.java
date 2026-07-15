@@ -79,6 +79,7 @@ public class WhatsAppService {
                updateMessage + "\n\n" +
                "Thank you,\n" +
                "7GEARS MOTORS, Chennai\n" +
-               "Queries: +91 78260 47847";
+               "Queries: +91 78260 47847\n\n" +
+               "This is a system generated message.";
     }
 }
