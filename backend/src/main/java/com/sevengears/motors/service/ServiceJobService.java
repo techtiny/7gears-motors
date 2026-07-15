@@ -5,7 +5,6 @@ import com.sevengears.motors.dto.ServiceJobDTO;
 import com.sevengears.motors.dto.ServiceUpdateDTO;
 import com.sevengears.motors.model.*;
 import com.sevengears.motors.repository.*;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -224,8 +223,16 @@ public class ServiceJobService {
     }
 
     private String generateJobNumber() {
-        long count = jobRepository.count() + 1;
-        return "7GM" + String.format("%05d", count);
+        return jobRepository.findMaxJobNumber()
+                .map(max -> {
+                    try {
+                        long num = Long.parseLong(max.replace("7GM", "")) + 1;
+                        return "7GM" + String.format("%05d", num);
+                    } catch (NumberFormatException e) {
+                        return "7GM" + String.format("%05d", jobRepository.count() + 1);
+                    }
+                })
+                .orElse("7GM00001");
     }
 
     private String defaultMessage(ServiceStatus status, String jobNumber) {

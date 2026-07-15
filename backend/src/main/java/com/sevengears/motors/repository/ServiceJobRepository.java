@@ -22,4 +22,7 @@ public interface ServiceJobRepository extends JpaRepository<ServiceJob, Long> {
 
     @Query("SELECT s FROM ServiceJob s ORDER BY s.createdAt DESC")
     List<ServiceJob> findAllOrderByCreatedAtDesc();
+
+    @Query("SELECT MAX(s.jobNumber) FROM ServiceJob s")
+    Optional<String> findMaxJobNumber();
 }
