@@ -102,7 +102,7 @@ public class ServiceJobService {
         ServiceUpdate update = new ServiceUpdate();
         update.setServiceJob(job);
         update.setStatus(ServiceStatus.RECEIVED);
-        update.setMessage("Vehicle received at 7Gears Motors. Job #" + job.getJobNumber() + " created. We will inspect your vehicle shortly.");
+        update.setMessage("Vehicle received at 7GEARS MOTORS. Job #" + job.getJobNumber() + " created. We will inspect your vehicle shortly.");
         update.setSentBy("System");
         updateRepository.save(update);
 
@@ -237,14 +237,14 @@ public class ServiceJobService {
 
     private String defaultMessage(ServiceStatus status, String jobNumber) {
         return switch (status) {
-            case RECEIVED          -> "Vehicle received. Job #" + jobNumber + " created.";
-            case INSPECTING        -> "Your vehicle is being inspected by our expert technician.";
-            case AWAITING_APPROVAL -> "Inspection complete. Please approve the service estimate to proceed.";
-            case IN_PROGRESS       -> "Work has started on your vehicle. Our technicians are on it!";
-            case QUALITY_CHECK     -> "Work complete! Your vehicle is undergoing quality check.";
-            case READY_FOR_PICKUP  -> "Your vehicle is ready for pickup. Please visit us at your convenience.";
-            case DELIVERED         -> "Vehicle delivered. Thank you for choosing 7Gears Motors!";
-            case CANCELLED         -> "Service job #" + jobNumber + " has been cancelled.";
+            case RECEIVED          -> "Vehicle received at 7GEARS MOTORS. Job #" + jobNumber + " created. We will inspect your vehicle shortly.";
+            case INSPECTING        -> "Our expert technician has begun inspecting your vehicle. We will update you with the findings soon.";
+            case AWAITING_APPROVAL -> "Inspection complete. Our service team will share the estimate shortly. Kindly approve to proceed with the work.";
+            case IN_PROGRESS       -> "Work has commenced on your vehicle. Our technicians are giving it their best attention.";
+            case QUALITY_CHECK     -> "Service work is complete. Your vehicle is now undergoing a thorough quality check before delivery.";
+            case READY_FOR_PICKUP  -> "Great news! Your vehicle is ready for pickup. Please visit us at your convenience during working hours.";
+            case DELIVERED         -> "Your vehicle has been delivered. Thank you for choosing 7GEARS MOTORS. We look forward to serving you again.";
+            case CANCELLED         -> "Service job #" + jobNumber + " has been cancelled. Please contact us if you have any questions.";
         };
     }
 

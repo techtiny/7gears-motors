@@ -72,12 +72,13 @@ public class WhatsAppService {
 
     public static String buildMessage(String jobNumber, String vehicleReg, String customerName,
                                       String statusLabel, String updateMessage) {
-        return "🚗 *7Gears Motors — Service Update*\n\n" +
+        return "🚗 7GEARS MOTORS — Service Update\n\n" +
                "Hello " + customerName + ",\n\n" +
-               "Your vehicle *" + vehicleReg + "* (Job #" + jobNumber + ") update:\n\n" +
-               "📌 *" + statusLabel + "*\n" +
+               "Your vehicle " + vehicleReg + " (Job #" + jobNumber + ") update:\n\n" +
+               "📌 " + statusLabel.toUpperCase() + "\n" +
                updateMessage + "\n\n" +
-               "Track your vehicle: http://7gearsmotors.in\n" +
-               "_Queries: +91 78260 47847 | 7Gears Motors, Chennai_";
+               "Thank you,\n" +
+               "7GEARS MOTORS, Chennai\n" +
+               "Queries: +91 78260 47847";
     }
 }
