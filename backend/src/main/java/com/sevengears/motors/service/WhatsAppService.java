@@ -74,7 +74,7 @@ public class WhatsAppService {
                                       String statusLabel, String updateMessage) {
         return "🚗 7GEARS MOTORS — Service Update\n\n" +
                "Hello " + customerName + ",\n\n" +
-               "Your vehicle " + vehicleReg + " (Job #" + jobNumber + ") update:\n\n" +
+               "Your vehicle " + vehicleReg + " (Job #" + jobNumber + ") service update:\n\n" +
                "📌 " + statusLabel.toUpperCase() + "\n" +
                updateMessage + "\n\n" +
                "Thank you,\n" +
