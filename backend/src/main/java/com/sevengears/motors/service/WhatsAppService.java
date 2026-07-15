@@ -72,13 +72,13 @@ public class WhatsAppService {
 
     public static String buildMessage(String jobNumber, String vehicleReg, String customerName,
                                       String statusLabel, String updateMessage) {
-        return "🚗 7GEARS MOTORS — Service Update\n\n" +
+        return "🚗 *7GEARS MOTORS* — Service Update\n\n" +
                "Hello " + customerName + ",\n\n" +
-               "Your vehicle " + vehicleReg + " (Job #" + jobNumber + ") service update:\n\n" +
-               "📌 " + statusLabel.toUpperCase() + "\n" +
+               "Your vehicle *" + vehicleReg + "* (Job #" + jobNumber + ") service update:\n\n" +
+               "📌 *" + statusLabel.toUpperCase() + "*\n" +
                updateMessage + "\n\n" +
                "Thank you,\n" +
-               "7GEARS MOTORS, Chennai\n" +
+               "*7GEARS MOTORS*, Chennai\n" +
                "Queries: +91 78260 47847\n\n" +
                "This is a system generated message.";
     }
