@@ -4,6 +4,7 @@ import { jobApi, feedbackApi } from '../api';
 import StatusBadge from '../components/StatusBadge';
 import StatusStepper from '../components/StatusStepper';
 import ImageGallery from '../components/ImageGallery';
+import MaterialConsumed from '../components/MaterialConsumed';
 import { ArrowLeft, Send, ChevronDown, Phone, Car, User, IndianRupee, Clock, MessageCircle, CheckCheck, Check, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -217,6 +218,11 @@ export default function ServiceDetail() {
       {/* Before / After Photo Gallery */}
       <div style={{ marginBottom: 20 }}>
         <ImageGallery jobId={id} />
+      </div>
+
+      {/* Material Consumed */}
+      <div style={{ marginBottom: 20 }}>
+        <MaterialConsumed jobId={id} />
       </div>
 
       <div className="content-grid" style={{ gap: 20 }}>

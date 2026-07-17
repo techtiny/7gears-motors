@@ -80,4 +80,11 @@ export const loyaltyApi = {
   redeem: (customerId, points) => api.post(`/loyalty/${customerId}/redeem`, { points }),
 };
 
+export const materialApi = {
+  getAll: (jobId)        => api.get(`/jobs/${jobId}/materials`),
+  create: (jobId, data)  => api.post(`/jobs/${jobId}/materials`, data),
+  update: (jobId, id, data) => api.put(`/jobs/${jobId}/materials/${id}`, data),
+  delete: (jobId, id)    => api.delete(`/jobs/${jobId}/materials/${id}`),
+};
+
 export default api;
