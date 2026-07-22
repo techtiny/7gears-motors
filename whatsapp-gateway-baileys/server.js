@@ -268,8 +268,47 @@ app.post('/send', async (req, res) => {
     res.json({ success: true, messageId: result.key.id, to: phone });
   } catch (err) {
     console.error('Send failed:', err.message);
+    // Session may have been invalidated — mark as disconnected so watchdog reconnects
+    clientReady = false;
+    connecting  = false;
     res.status(500).json({ error: err.message });
   }
+});
+
+// Force a fresh reconnect without clearing session (useful when connection goes stale)
+app.post('/reconnect', async (_req, res) => {
+  console.log('🔄 Manual reconnect triggered via API');
+  clientReady = false;
+  connecting  = false;
+  if (sock) {
+    try { sock.end(); } catch (_) {}
+    sock = null;
+  }
+  setTimeout(() => connectToWhatsApp(), 500);
+  res.json({ status: 'reconnecting', message: 'Reconnect triggered. Check /status in a few seconds.' });
+});
+
+// Clear session from MySQL and force rescan (when session is fully revoked)
+app.post('/clear-session', async (_req, res) => {
+  console.log('🗑️  Clearing WhatsApp session...');
+  clientReady = false;
+  connecting  = false;
+  if (sock) {
+    try { sock.end(); } catch (_) {}
+    sock = null;
+  }
+  if (dbPool) {
+    try { await dbPool.execute('DELETE FROM whatsapp_auth'); } catch (e) {
+      return res.status(500).json({ error: 'Failed to clear MySQL session: ' + e.message });
+    }
+  } else {
+    const AUTH_PATH = process.env.AUTH_PATH || './auth_info';
+    try { fs.rmSync(AUTH_PATH, { recursive: true, force: true }); } catch (_) {}
+  }
+  qrCount = 0;
+  lastQR   = null;
+  setTimeout(() => connectToWhatsApp(), 500);
+  res.json({ status: 'cleared', message: 'Session cleared. Open /qr to scan a new QR code.' });
 });
 
 app.post('/send-bulk', async (req, res) => {
