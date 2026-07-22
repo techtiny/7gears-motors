@@ -346,6 +346,29 @@ app.post('/clear-session', async (_req, res) => {
   res.json({ status: 'cleared', message: 'Session cleared. Open /qr to scan a new QR code.' });
 });
 
+app.post('/send-document', async (req, res) => {
+  const { to, fileName, pdfBase64, caption } = req.body;
+  if (!clientReady) return res.status(503).json({ error: 'WhatsApp not connected.' });
+  if (!to || !pdfBase64 || !fileName) return res.status(400).json({ error: 'to, fileName and pdfBase64 are required' });
+  try {
+    const phone  = normalizePhone(to);
+    const buffer = Buffer.from(pdfBase64, 'base64');
+    const result = await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+      document: buffer,
+      mimetype: 'application/pdf',
+      fileName: fileName,
+      caption:  caption || '',
+    });
+    console.log(`📄 PDF sent to +${phone} | MsgID: ${result.key.id}`);
+    res.json({ success: true, messageId: result.key.id, to: phone });
+  } catch (err) {
+    console.error('Document send failed:', err.message);
+    clientReady = false;
+    connecting  = false;
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/send-bulk', async (req, res) => {
   const { messages } = req.body;
   if (!clientReady) return res.status(503).json({ error: 'WhatsApp not connected' });

@@ -81,10 +81,12 @@ export const loyaltyApi = {
 };
 
 export const materialApi = {
-  getAll: (jobId)        => api.get(`/jobs/${jobId}/materials`),
-  create: (jobId, data)  => api.post(`/jobs/${jobId}/materials`, data),
-  update: (jobId, id, data) => api.put(`/jobs/${jobId}/materials/${id}`, data),
-  delete: (jobId, id)    => api.delete(`/jobs/${jobId}/materials/${id}`),
+  getAll:       (jobId)           => api.get(`/jobs/${jobId}/materials`),
+  create:       (jobId, data)     => api.post(`/jobs/${jobId}/materials`, data),
+  update:       (jobId, id, data) => api.put(`/jobs/${jobId}/materials/${id}`, data),
+  delete:       (jobId, id)       => api.delete(`/jobs/${jobId}/materials/${id}`),
+  downloadPdf:  (jobId)           => api.get(`/jobs/${jobId}/materials/pdf`, { responseType: 'blob' }),
+  sendApproval: (jobId)           => api.post(`/jobs/${jobId}/materials/send-approval`),
 };
 
 export default api;

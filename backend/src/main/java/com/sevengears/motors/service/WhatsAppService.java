@@ -61,6 +61,34 @@ public class WhatsAppService {
         }
     }
 
+    public String sendDocument(String toPhone, String base64Pdf, String fileName, String caption) {
+        try {
+            ResponseEntity<Map> status = restTemplate.getForEntity(gatewayUrl + "/status", Map.class);
+            if (status.getBody() == null || !Boolean.TRUE.equals(status.getBody().get("ready"))) {
+                throw new RuntimeException("WhatsApp gateway not connected.");
+            }
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, String>> request = new HttpEntity<>(
+                    Map.of("to", toPhone, "fileName", fileName, "pdfBase64", base64Pdf, "caption", caption),
+                    headers
+            );
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    gatewayUrl + "/send-document", request, Map.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                String messageId = (String) response.getBody().get("messageId");
+                log.info("📄 PDF sent → {} | ID: {}", toPhone, messageId);
+                return messageId;
+            }
+            throw new RuntimeException("Gateway returned: " + response.getStatusCode());
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("WhatsApp document send error → {}: {}", toPhone, e.getMessage());
+            throw new RuntimeException("WhatsApp document send failed: " + e.getMessage(), e);
+        }
+    }
+
     public boolean isEnabled() {
         try {
             ResponseEntity<Map> status = restTemplate.getForEntity(gatewayUrl + "/status", Map.class);
