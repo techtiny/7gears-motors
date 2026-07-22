@@ -64,6 +64,9 @@ public class ServiceJob {
     @OrderBy("createdAt ASC")
     private List<ServiceUpdate> updates;
 
+    @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<MaterialConsumed> materials;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
