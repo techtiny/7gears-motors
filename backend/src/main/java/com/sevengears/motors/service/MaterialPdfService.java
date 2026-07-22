@@ -62,16 +62,14 @@ public class MaterialPdfService {
         infoCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
         Font companyFont = new Font(Font.HELVETICA, 18, Font.BOLD, BRAND_RED);
         Font subFont     = new Font(Font.HELVETICA, 10, Font.NORMAL, Color.GRAY);
-        Font tagFont     = new Font(Font.HELVETICA, 9,  Font.BOLD,   BRAND_DARK);
+        Font tagFont     = new Font(Font.HELVETICA, 9,  Font.BOLD,   Color.WHITE);
         Paragraph company = new Paragraph("7GEARS MOTORS", companyFont);
         company.setSpacingAfter(2);
         infoCell.addElement(company);
         infoCell.addElement(new Paragraph("Professional Auto Service Centre", subFont));
         infoCell.addElement(new Paragraph("Chennai, Tamil Nadu | +91 78260 47847", subFont));
-        Phrase tag = new Phrase("  MATERIAL ESTIMATE  ", tagFont);
         Chunk tagChunk = new Chunk("  MATERIAL ESTIMATE  ", tagFont);
         tagChunk.setBackground(BRAND_DARK, 4, 3, 4, 3);
-        tagChunk.setColor(Color.WHITE);
         Paragraph tagPara = new Paragraph();
         tagPara.setSpacingBefore(6);
         tagPara.add(tagChunk);
