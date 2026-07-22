@@ -7,6 +7,7 @@ import com.sevengears.motors.repository.MaterialConsumedRepository;
 import com.sevengears.motors.repository.ServiceJobRepository;
 import com.sevengears.motors.service.MaterialPdfService;
 import com.sevengears.motors.service.WhatsAppService;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -77,6 +78,7 @@ public class MaterialConsumedController {
         return ResponseEntity.noContent().build();
     }
 
+    @Transactional
     @GetMapping("/pdf")
     public ResponseEntity<byte[]> downloadPdf(@PathVariable Long jobId) throws Exception {
         ServiceJob job = jobRepo.findById(jobId)
@@ -91,6 +93,7 @@ public class MaterialConsumedController {
                 .body(pdf);
     }
 
+    @Transactional
     @PostMapping("/send-approval")
     public ResponseEntity<Map<String, String>> sendApproval(@PathVariable Long jobId) throws Exception {
         ServiceJob job = jobRepo.findById(jobId)
