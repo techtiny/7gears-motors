@@ -67,6 +67,9 @@ public class ServiceJob {
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<MaterialConsumed> materials;
 
+    @OneToMany(mappedBy = "serviceJob", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<ServiceImage> images;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
