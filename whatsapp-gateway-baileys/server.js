@@ -182,15 +182,50 @@ app.get('/qr.json', (_req, res) => {
   res.json({ status: 'pending', qr: lastQR, generatedAt: qrTimestamp });
 });
 
+const CLEAR_BTN = `
+  <div style="margin-top:28px;border-top:1px solid rgba(0,0,0,0.08);padding-top:20px;text-align:center;">
+    <p style="font-size:12px;color:#9ca3af;margin-bottom:10px;">Session not working? Force a fresh scan:</p>
+    <button id="clearBtn" onclick="clearSession()" style="background:#ef4444;color:white;border:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">
+      🗑️ Force Clear &amp; Rescan
+    </button>
+    <button id="reconnBtn" onclick="reconnect()" style="background:#f59e0b;color:white;border:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-left:10px;">
+      🔄 Reconnect
+    </button>
+    <p id="msg" style="font-size:12px;margin-top:10px;color:#374151;"></p>
+  </div>
+  <script>
+    async function clearSession(){
+      if(!confirm('Clear session and show new QR? You will need to scan again.')) return;
+      document.getElementById('clearBtn').disabled=true;
+      document.getElementById('msg').textContent='Clearing...';
+      try{
+        const r=await fetch('/clear-session',{method:'POST'});
+        const d=await r.json();
+        document.getElementById('msg').textContent='✅ Cleared! Reloading...';
+        setTimeout(()=>location.reload(),2000);
+      }catch(e){document.getElementById('msg').textContent='Error: '+e.message;}
+    }
+    async function reconnect(){
+      document.getElementById('reconnBtn').disabled=true;
+      document.getElementById('msg').textContent='Reconnecting...';
+      try{
+        await fetch('/reconnect',{method:'POST'});
+        document.getElementById('msg').textContent='✅ Reconnecting... reloading in 5s';
+        setTimeout(()=>location.reload(),5000);
+      }catch(e){document.getElementById('msg').textContent='Error: '+e.message;}
+    }
+  </script>`;
+
 app.get('/qr', async (_req, res) => {
   if (clientReady) {
     return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8">
       <title>7GEARS MOTORS — WhatsApp</title>
-      <style>body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;background:#f0fdf4;}
+      <style>body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f0fdf4;}
       .badge{background:#22c55e;color:white;padding:14px 32px;border-radius:12px;font-size:20px;font-weight:700;}
-      p{color:#166534;margin-top:12px;font-size:15px;}</style></head>
+      p{color:#166534;margin-top:12px;font-size:15px;text-align:center;}</style></head>
       <body><div class="badge">✅ WhatsApp Connected</div>
-      <p>Session is saved in MySQL — no re-scan needed on restart.</p></body></html>`);
+      <p>Session is saved in MySQL — no re-scan needed on restart.</p>
+      ${CLEAR_BTN}</body></html>`);
   }
   if (!lastQR) {
     const errHtml = lastError
@@ -201,12 +236,12 @@ app.get('/qr', async (_req, res) => {
     return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8">
       <title>7GEARS MOTORS — WhatsApp QR</title>
       <meta http-equiv="refresh" content="4">
-      <style>body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;background:#fffbeb;}
+      <style>body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fffbeb;}
       .badge{background:#f59e0b;color:white;padding:14px 32px;border-radius:12px;font-size:18px;font-weight:700;}
       p{color:#92400e;margin-top:12px;font-size:14px;}</style></head>
       <body><div class="badge">⏳ Initializing WhatsApp...</div>
       <p>Page auto-refreshes. QR will appear shortly.</p>
-      ${errHtml}</body></html>`);
+      ${errHtml}${CLEAR_BTN}</body></html>`);
   }
   try {
     const qrDataUrl = await qrcode.toDataURL(lastQR, { width: 300 });
