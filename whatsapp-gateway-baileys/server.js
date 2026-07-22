@@ -12,7 +12,7 @@ const fs      = require('fs');
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
 
 let sock          = null;
 let clientReady   = false;
