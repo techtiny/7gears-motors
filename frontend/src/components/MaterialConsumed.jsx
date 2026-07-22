@@ -1,9 +1,84 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { materialApi } from '../api';
 import { Plus, Edit2, Trash2, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { MATERIAL_LIST } from '../data/materialList';
 
 const EMPTY = { description: '', remarks: '', quantity: '', amount: '' };
+
+function DescriptionInput({ value, onChange, placeholder, autoFocus }) {
+  const [open, setOpen]       = useState(false);
+  const [options, setOptions] = useState([]);
+  const wrapRef               = useRef(null);
+
+  const handleChange = (v) => {
+    onChange(v);
+    const q = v.trim().toUpperCase();
+    if (q) {
+      const matches = MATERIAL_LIST.filter(m => m.includes(q));
+      setOptions(matches.slice(0, 10));
+      setOpen(matches.length > 0);
+    } else {
+      setOptions(MATERIAL_LIST.slice(0, 10));
+      setOpen(true);
+    }
+  };
+
+  const handleFocus = () => {
+    if (!value.trim()) {
+      setOptions(MATERIAL_LIST.slice(0, 10));
+      setOpen(true);
+    }
+  };
+
+  const select = (item) => {
+    onChange(item);
+    setOpen(false);
+  };
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      <input
+        className="form-control"
+        style={{ fontSize: 13, padding: '4px 8px' }}
+        value={value}
+        onChange={e => handleChange(e.target.value)}
+        onFocus={handleFocus}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        autoComplete="off"
+      />
+      {open && options.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0,
+          background: 'white', border: '1px solid #e5e7eb', borderRadius: 6,
+          zIndex: 200, maxHeight: 200, overflowY: 'auto',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+        }}>
+          {options.map(item => (
+            <div
+              key={item}
+              onMouseDown={() => select(item)}
+              style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid #f3f4f6' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f0fdf4'}
+              onMouseLeave={e => e.currentTarget.style.background = 'white'}
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ItemRow({ item, sNo, onEdit, onDelete }) {
   return (
@@ -34,9 +109,12 @@ function EditRow({ form, onChange, onSave, onCancel, saving }) {
     <tr style={{ background: '#f0fdf4' }}>
       <td />
       <td>
-        <input className="form-control" style={{ fontSize: 13, padding: '4px 8px' }}
-          value={form.description} onChange={e => onChange('description', e.target.value)}
-          placeholder="Description *" autoFocus />
+        <DescriptionInput
+          value={form.description}
+          onChange={v => onChange('description', v)}
+          placeholder="Description *"
+          autoFocus
+        />
       </td>
       <td>
         <input className="form-control" style={{ fontSize: 13, padding: '4px 8px' }}
