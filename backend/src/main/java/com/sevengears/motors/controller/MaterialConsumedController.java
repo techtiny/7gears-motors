@@ -116,8 +116,14 @@ public class MaterialConsumedController {
                 "Thank you,\n*7GEARS MOTORS*, Chennai\n\n" +
                 "This is a system generated message.";
 
-        String msgId = whatsAppService.sendDocument(phone, base64, fileName, caption);
-        return ResponseEntity.ok(Map.of("messageId", msgId, "message", "PDF sent to " + phone));
+        // Send text notification first (always visible), then the PDF document
+        whatsAppService.send(phone, caption);
+        String msgId = whatsAppService.sendDocument(phone, base64, fileName,
+                "📎 Material Estimate — " + job.getJobNumber());
+        return ResponseEntity.ok(Map.of(
+                "messageId", msgId,
+                "sentTo", phone,
+                "message", "PDF sent to " + phone));
     }
 
     private MaterialConsumedDTO toDTO(MaterialConsumed m) {
