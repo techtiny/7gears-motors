@@ -51,6 +51,7 @@ export const jobApi = {
   addUpdate: (id, data) => api.post(`/jobs/${id}/updates`, data),
   sendWhatsapp: (jobId, updateId) => api.post(`/jobs/${jobId}/updates/${updateId}/send-whatsapp`),
   getWhatsappStatus: () => api.get('/jobs/whatsapp-status'),
+  delete: (id) => api.delete(`/jobs/${id}`),
 };
 
 export const appointmentApi = {

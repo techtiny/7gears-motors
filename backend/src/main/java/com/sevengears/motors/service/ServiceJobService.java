@@ -308,4 +308,9 @@ public class ServiceJobService {
     public boolean isWhatsAppEnabled() {
         return whatsAppService.isEnabled();
     }
+
+    public void delete(Long id) {
+        if (!jobRepository.existsById(id)) throw new RuntimeException("Job not found: " + id);
+        jobRepository.deleteById(id);
+    }
 }

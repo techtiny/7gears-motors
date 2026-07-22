@@ -5,7 +5,7 @@ import StatusBadge from '../components/StatusBadge';
 import StatusStepper from '../components/StatusStepper';
 import ImageGallery from '../components/ImageGallery';
 import MaterialConsumed from '../components/MaterialConsumed';
-import { ArrowLeft, Send, ChevronDown, Phone, Car, User, IndianRupee, Clock, MessageCircle, CheckCheck, Check, Star } from 'lucide-react';
+import { ArrowLeft, Send, ChevronDown, Phone, Car, User, IndianRupee, Clock, MessageCircle, CheckCheck, Check, Star, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const LOGO = '/logo.png';
@@ -182,6 +182,17 @@ export default function ServiceDetail() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete Job #${job.jobNumber}?\n\nThis will permanently delete the job, all status updates, photos and materials. This cannot be undone.`)) return;
+    try {
+      await jobApi.delete(id);
+      toast.success(`Job #${job.jobNumber} deleted`);
+      navigate('/services');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to delete job');
+    }
+  };
+
   if (loading) return <div className="loading-center"><div className="spinner" /></div>;
   if (!job)    return <div className="empty-state"><h3>Job not found</h3></div>;
 
@@ -195,6 +206,7 @@ export default function ServiceDetail() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1 }}>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: 20, fontWeight: 700 }}>Job #{job.jobNumber}</h1>
             <StatusBadge status={job.status} />
@@ -208,6 +220,14 @@ export default function ServiceDetail() {
             {job.vehicleMake} {job.vehicleModel} · {job.vehicleRegistration} · {job.customerName}
           </p>
         </div>
+        <button
+          type="button"
+          className="btn btn-icon"
+          title="Delete this job"
+          style={{ background: '#fee2e2', color: '#ef4444', border: 'none', flexShrink: 0 }}
+          onClick={handleDelete}>
+          <Trash2 size={16} />
+        </button>
       </div>
 
       {/* Stepper */}

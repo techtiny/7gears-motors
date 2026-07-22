@@ -79,6 +79,12 @@ public class ServiceJobController {
         }
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        jobService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/whatsapp-status")
     public ResponseEntity<java.util.Map<String, Object>> whatsAppStatus() {
         return ResponseEntity.ok(java.util.Map.of("enabled", jobService.isWhatsAppEnabled()));

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { jobApi, vehicleApi } from '../api';
 import StatusBadge from '../components/StatusBadge';
-import { Search, Plus, Wrench, Filter } from 'lucide-react';
+import { Search, Plus, Wrench, Filter, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const SERVICE_TYPES = [
@@ -131,6 +131,18 @@ export default function Services() {
   const [modal, setModal] = useState(false);
   const navigate = useNavigate();
 
+  const handleDelete = async (e, job) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete Job #${job.jobNumber} (${job.vehicleRegistration})?\n\nThis will permanently delete the job, all updates, photos and materials.`)) return;
+    try {
+      await jobApi.delete(job.id);
+      toast.success(`Job #${job.jobNumber} deleted`);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to delete job');
+    }
+  };
+
   const load = async () => {
     setLoading(true);
     try {
@@ -198,6 +210,7 @@ export default function Services() {
                   <th>Photos</th>
                   <th>Est. Cost</th>
                   <th>Received</th>
+                  <th style={{ width: 50 }} />
                 </tr>
               </thead>
               <tbody>
@@ -242,6 +255,15 @@ export default function Services() {
                     </td>
                     <td style={{ fontSize: 12, color: '#6b7280' }}>
                       {job.receivedAt ? new Date(job.receivedAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
+                    </td>
+                    <td onClick={e => e.stopPropagation()} style={{ textAlign: 'center' }}>
+                      <button
+                        className="btn btn-icon"
+                        style={{ width: 30, height: 30, background: '#fee2e2', color: '#ef4444', border: 'none' }}
+                        title="Delete job"
+                        onClick={e => handleDelete(e, job)}>
+                        <Trash2 size={13} />
+                      </button>
                     </td>
                   </tr>
                 ))}
