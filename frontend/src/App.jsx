@@ -11,8 +11,9 @@ import ServiceDetail from './pages/ServiceDetail';
 import TrackJob     from './pages/TrackJob';
 import Campaigns    from './pages/Campaigns';
 import Appointments from './pages/Appointments';
-import Feedback     from './pages/Feedback';
-import Login        from './pages/Login';
+import Feedback        from './pages/Feedback';
+import UserManagement from './pages/UserManagement';
+import Login          from './pages/Login';
 
 const PAGE_TITLES = {
   '/':             'Dashboard',
@@ -23,6 +24,7 @@ const PAGE_TITLES = {
   '/campaigns':    'Campaigns',
   '/feedback':     'Feedback',
   '/track':        'Track Vehicle',
+  '/users':        'User Management',
 };
 
 const BOTTOM_NAV = [
@@ -101,6 +103,7 @@ function Layout() {
           <Route path="/campaigns"    element={<Campaigns />} />
           <Route path="/feedback"     element={<Feedback />} />
           <Route path="/track"        element={<TrackJob />} />
+          <Route path="/users"        element={<UserManagement />} />
         </Routes>
       </main>
 

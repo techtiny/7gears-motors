@@ -50,5 +50,8 @@ public class AppUser implements UserDetails {
     public Long     getId()          { return id; }
     public UserRole getRole()        { return role; }
     public String   getDisplayName() { return displayName; }
-    public void setPassword(String p){ this.password = p; }
+    public void setUsername(String u)    { this.username = u; }
+    public void setRole(UserRole r)      { this.role = r; }
+    public void setDisplayName(String d) { this.displayName = d; }
+    public void setPassword(String p)    { this.password = p; }
 }

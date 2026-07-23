@@ -81,6 +81,13 @@ export const loyaltyApi = {
   redeem: (customerId, points) => api.post(`/loyalty/${customerId}/redeem`, { points }),
 };
 
+export const userApi = {
+  getAll:  ()           => api.get('/admin/users'),
+  create:  (data)       => api.post('/admin/users', data),
+  update:  (id, data)   => api.put(`/admin/users/${id}`, data),
+  delete:  (id)         => api.delete(`/admin/users/${id}`),
+};
+
 export const materialApi = {
   getAll:       (jobId)           => api.get(`/jobs/${jobId}/materials`),
   create:       (jobId, data)     => api.post(`/jobs/${jobId}/materials`, data),

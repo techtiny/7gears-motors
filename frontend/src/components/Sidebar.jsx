@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Car, Wrench, Search, Phone, Megaphone, CalendarDays, Star, MapPin } from 'lucide-react';
+import { LayoutDashboard, Users, Car, Wrench, Search, Phone, Megaphone, CalendarDays, Star, MapPin, UserCog } from 'lucide-react';
 
 const LOGO = '/logo.png';
 
@@ -37,9 +37,16 @@ const NAV_SECTIONS = [
       { to: '/track', icon: <Search size={17} />, label: 'Track Vehicle' },
     ],
   },
+  {
+    label: 'Settings',
+    items: [
+      { to: '/users', icon: <UserCog size={17} />, label: 'User Management', roles: ['CEO', 'ADMIN'] },
+    ],
+  },
 ];
 
 export default function Sidebar({ open, onClose }) {
+  const userRole = localStorage.getItem('role') || '';
   return (
     <>
       <div className={`sidebar-overlay ${open ? 'open' : ''}`} onClick={onClose} />
@@ -56,10 +63,13 @@ export default function Sidebar({ open, onClose }) {
 
         {/* Navigation */}
         <nav className="sidebar-nav">
-          {NAV_SECTIONS.map(section => (
+          {NAV_SECTIONS.map(section => {
+            const visibleItems = section.items.filter(n => !n.roles || n.roles.includes(userRole));
+            if (visibleItems.length === 0) return null;
+            return (
             <div key={section.label}>
               <div className="sidebar-section">{section.label}</div>
-              {section.items.map(n => (
+              {visibleItems.map(n => (
                 <NavLink
                   key={n.to} to={n.to} end={n.end}
                   className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
@@ -78,7 +88,8 @@ export default function Sidebar({ open, onClose }) {
                 </NavLink>
               ))}
             </div>
-          ))}
+            );
+          })}
         </nav>
 
         {/* Footer */}
