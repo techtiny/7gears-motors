@@ -17,6 +17,8 @@ import java.util.Map;
 public class ServiceJobController {
 
     private final ServiceJobService jobService;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.sevengears.motors.service.TermsService termsService;
 
     public ServiceJobController(ServiceJobService jobService) {
         this.jobService = jobService;
@@ -46,8 +48,22 @@ public class ServiceJobController {
     }
 
     @PostMapping
-    public ResponseEntity<ServiceJobDTO> create(@Valid @RequestBody ServiceJobDTO dto) {
-        return ResponseEntity.ok(jobService.create(dto));
+    public ResponseEntity<ServiceJobDTO> create(@Valid @RequestBody ServiceJobDTO dto,
+                                                @org.springframework.security.core.annotation.AuthenticationPrincipal
+                                                com.sevengears.motors.model.AppUser user) {
+        ServiceJobDTO created = jobService.create(dto);
+        // One WhatsApp to the customer: vehicle received + Job ID + Terms & Conditions (text, PDF, Accept poll).
+        // A WhatsApp failure must not undo the job — staff can resend from the job page.
+        String by = user == null ? null : (user.getDisplayName() != null ? user.getDisplayName() : user.getUsername());
+        try {
+            termsService.sendOnJobCreated(created.getId(), by);
+            created = jobService.findById(created.getId());
+            created.setTermsSent(true);
+        } catch (Exception e) {
+            created.setTermsSent(false);
+            created.setTermsError(e.getMessage());
+        }
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")

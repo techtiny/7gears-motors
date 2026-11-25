@@ -97,4 +97,12 @@ public class ServiceJobDTO {
     public void setFirstBeforeThumb(String firstBeforeThumb) { this.firstBeforeThumb = firstBeforeThumb; }
     public String getFirstAfterThumb() { return firstAfterThumb; }
     public void setFirstAfterThumb(String firstAfterThumb) { this.firstAfterThumb = firstAfterThumb; }
+
+    /** Set only on create: whether the welcome + Terms & Conditions WhatsApp went out. */
+    private Boolean termsSent;
+    private String termsError;
+    public Boolean getTermsSent() { return termsSent; }
+    public void setTermsSent(Boolean termsSent) { this.termsSent = termsSent; }
+    public String getTermsError() { return termsError; }
+    public void setTermsError(String termsError) { this.termsError = termsError; }
 }

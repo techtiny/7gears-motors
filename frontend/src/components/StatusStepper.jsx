@@ -1,7 +1,7 @@
+// "Received" and "Awaiting Approval" are one step: vehicle in, waiting for the customer to accept the T&C.
 const STEPS = [
-  { key: 'RECEIVED',          label: 'Received' },
+  { key: 'AWAITING_APPROVAL', label: 'Received · Approval' },
   { key: 'INSPECTING',        label: 'Inspecting' },
-  { key: 'AWAITING_APPROVAL', label: 'Approval' },
   { key: 'IN_PROGRESS',       label: 'In Progress' },
   { key: 'QUALITY_CHECK',     label: 'QC' },
   { key: 'READY_FOR_PICKUP',  label: 'Ready' },
@@ -9,7 +9,7 @@ const STEPS = [
 ];
 
 export default function StatusStepper({ current }) {
-  const currentIdx = STEPS.findIndex(s => s.key === current);
+  const currentIdx = STEPS.findIndex(s => s.key === (current === 'RECEIVED' ? 'AWAITING_APPROVAL' : current));
   return (
     <div className="stepper">
       {STEPS.map((step, idx) => {
