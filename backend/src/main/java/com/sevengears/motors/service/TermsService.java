@@ -115,6 +115,25 @@ public class TermsService {
 
     // ── Sending ───────────────────────────────────────────────
 
+    /** Right after a job is created: one WhatsApp with "vehicle received + Job ID" and the T&C to accept. */
+    @Transactional
+    public Map<String, Object> sendOnJobCreated(Long jobId, String sentBy) throws Exception {
+        ServiceJob job = jobRepo.findById(jobId).orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+        String phone = customerPhone(job);
+        TermsAcceptance t = new TermsAcceptance();
+        t.setJob(job);
+        t.setToken("T-" + newToken());
+        t.setSentBy(sentBy);
+        t = repo.save(t);
+        deliver(job, t, phone, Intro.JOB_CREATED);
+        // The job's first timeline entry ("Vehicle received…") is this WhatsApp — mark it as sent
+        updateRepo.findByServiceJobIdOrderByCreatedAtAsc(jobId).stream()
+                .filter(u -> "System".equals(u.getSentBy()))
+                .findFirst()
+                .ifPresent(u -> { u.setWhatsappSent(true); updateRepo.save(u); });
+        return toMap(t);
+    }
+
     @Transactional
     public Map<String, Object> send(Long jobId, String sentBy) throws Exception {
         ServiceJob job = jobRepo.findById(jobId).orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
@@ -130,7 +149,7 @@ public class TermsService {
         t.setSentBy(sentBy);
         t = repo.save(t);
 
-        deliver(job, t, phone, false);
+        deliver(job, t, phone, Intro.REQUEST);
         logEvent(job, "📜 Terms & Conditions sent to customer on WhatsApp for acceptance before work begins"
                 + (sentBy != null ? "\nSent by " + sentBy : ""), "7Gears Team");
         return toMap(t);
@@ -142,7 +161,7 @@ public class TermsService {
                 .filter(x -> x.getStatus() == TermsAcceptance.Status.PENDING)
                 .orElseThrow(() -> new IllegalArgumentException("No pending Terms & Conditions request for this job. Send them first."));
         ServiceJob job = t.getJob();
-        deliver(job, t, customerPhone(job), true);
+        deliver(job, t, customerPhone(job), Intro.REMINDER);
         t.setResendCount(t.getResendCount() + 1);
         t.setLastResentAt(LocalDateTime.now());
         logEvent(job, "🔁 Terms & Conditions re-sent to customer for acceptance (reminder " + t.getResendCount() + ")"
@@ -150,14 +169,22 @@ public class TermsService {
         return toMap(t);
     }
 
-    private void deliver(ServiceJob job, TermsAcceptance t, String phone, boolean reminder) throws Exception {
+    private enum Intro { JOB_CREATED, REQUEST, REMINDER }
+
+    private void deliver(ServiceJob job, TermsAcceptance t, String phone, Intro intro) throws Exception {
         String veh = job.getVehicle().getRegistrationNumber();
         StringBuilder msg = new StringBuilder();
         msg.append("🚗 *7GEARS MOTORS*\n\n");
         msg.append("Hello ").append(job.getVehicle().getCustomer().getName()).append(",\n\n");
-        msg.append(reminder ? "Reminder: before we begin work on your vehicle *" : "Before we begin work on your vehicle *")
-           .append(veh).append("* (Job #").append(job.getJobNumber())
-           .append("), please read and accept our repair terms.\n\n");
+        if (intro == Intro.JOB_CREATED) {
+            msg.append("✅ Your vehicle *").append(veh).append("* has been received at 7GEARS MOTORS.\n");
+            msg.append("🧾 Job ID: *#").append(job.getJobNumber()).append("*\n\n");
+            msg.append("⏳ We are awaiting your acceptance of our Terms & Conditions to proceed with the work. Please read them below.\n\n");
+        } else {
+            msg.append(intro == Intro.REMINDER ? "Reminder: before we begin work on your vehicle *" : "Before we begin work on your vehicle *")
+               .append(veh).append("* (Job #").append(job.getJobNumber())
+               .append("), please read and accept our repair terms.\n\n");
+        }
         msg.append("*").append(REPAIR_TITLE).append("*\n");
         for (int i = 0; i < REPAIR_CONDITIONS.size(); i++) msg.append(i + 1).append(". ").append(REPAIR_CONDITIONS.get(i)).append("\n");
         msg.append("\n*").append(PARTS_TITLE).append("*\n");

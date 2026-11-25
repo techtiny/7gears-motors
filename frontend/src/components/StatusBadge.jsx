@@ -1,7 +1,7 @@
 const STATUS_MAP = {
-  RECEIVED:          { label: 'Received',         cls: 'badge-received'   },
+  RECEIVED:          { label: 'Received – Awaiting Approval', cls: 'badge-awaiting' },
   INSPECTING:        { label: 'Inspecting',        cls: 'badge-inspecting' },
-  AWAITING_APPROVAL: { label: 'Awaiting Approval', cls: 'badge-awaiting'   },
+  AWAITING_APPROVAL: { label: 'Received – Awaiting Approval', cls: 'badge-awaiting' },
   IN_PROGRESS:       { label: 'In Progress',       cls: 'badge-inprogress' },
   QUALITY_CHECK:     { label: 'Quality Check',     cls: 'badge-quality'    },
   READY_FOR_PICKUP:  { label: 'Ready for Pickup',  cls: 'badge-ready'      },

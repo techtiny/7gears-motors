@@ -11,5 +11,9 @@ public interface TermsAcceptanceRepository extends JpaRepository<TermsAcceptance
     List<TermsAcceptance> findByJobIdOrderBySentAtDescIdDesc(Long jobId);
     Optional<TermsAcceptance> findFirstByJobIdOrderBySentAtDescIdDesc(Long jobId);
     List<TermsAcceptance> findByJobIdAndStatus(Long jobId, TermsAcceptance.Status status);
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM TermsAcceptance t WHERE t.job.id = :jobId")
+    void deleteAllForJob(Long jobId);
+
     boolean existsByJobIdAndStatus(Long jobId, TermsAcceptance.Status status);
 }

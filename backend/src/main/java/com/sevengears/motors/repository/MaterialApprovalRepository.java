@@ -9,6 +9,10 @@ import java.util.Optional;
 public interface MaterialApprovalRepository extends JpaRepository<MaterialApproval, Long> {
     List<MaterialApproval> findByJobIdOrderBySentAtDescIdDesc(Long jobId);
 
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM MaterialApproval a WHERE a.job.id = :jobId")
+    void deleteAllForJob(Long jobId);
+
     Optional<MaterialApproval> findByToken(String token);
     Optional<MaterialApproval> findFirstByJobIdOrderBySentAtDescIdDesc(Long jobId);
     List<MaterialApproval> findByJobIdAndStatus(Long jobId, MaterialApproval.Status status);

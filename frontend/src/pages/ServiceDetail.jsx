@@ -11,17 +11,18 @@ import toast from 'react-hot-toast';
 
 const LOGO = '/logo.png';
 
+// "Received" and "Awaiting Approval" are one stage (vehicle in, waiting for the customer's T&C acceptance).
 const NEXT_STATUS = {
   RECEIVED:          'INSPECTING',
-  INSPECTING:        'AWAITING_APPROVAL',
-  AWAITING_APPROVAL: 'IN_PROGRESS',
+  AWAITING_APPROVAL: 'INSPECTING',
+  INSPECTING:        'IN_PROGRESS',
   IN_PROGRESS:       'QUALITY_CHECK',
   QUALITY_CHECK:     'READY_FOR_PICKUP',
   READY_FOR_PICKUP:  'DELIVERED',
 };
 
 const STATUS_LABEL = {
-  RECEIVED: 'Received', INSPECTING: 'Inspecting', AWAITING_APPROVAL: 'Awaiting Approval',
+  AWAITING_APPROVAL: 'Received – Awaiting Approval', RECEIVED: 'Received – Awaiting Approval', INSPECTING: 'Inspecting',
   IN_PROGRESS: 'In Progress', QUALITY_CHECK: 'Quality Check', READY_FOR_PICKUP: 'Ready for Pickup',
   DELIVERED: 'Delivered', CANCELLED: 'Cancelled',
 };
@@ -324,7 +325,7 @@ export default function ServiceDetail() {
                 </button>
                 {showStatusMenu && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 20, overflow: 'hidden', marginTop: 4 }}>
-                    {Object.keys(STATUS_LABEL).filter(s => s !== job.status).map(s => (
+                    {Object.keys(STATUS_LABEL).filter(s => s !== 'RECEIVED' && s !== job.status && !(job.status === 'RECEIVED' && s === 'AWAITING_APPROVAL')).map(s => (
                       <button key={s} type="button" onClick={() => setStatus(s)}
                         style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
                         onMouseEnter={e => e.currentTarget.style.background = '#f8f9fa'}

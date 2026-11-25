@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 const fmtDT = (d) => d ? new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '';
 
 const STATUS = {
-  NONE:       { bg: '#fef2f2', border: '#fca5a5', color: '#991b1b', icon: '⛔', text: 'Not sent yet — customer must accept the Terms & Conditions before work begins' },
+  NONE:       { bg: '#fef2f2', border: '#fca5a5', color: '#991b1b', icon: '⛔', text: 'Not sent — the WhatsApp at job creation failed. Send the Terms & Conditions so work can begin' },
   PENDING:    { bg: '#fffbeb', border: '#fcd34d', color: '#92400e', icon: '⏳', text: 'Waiting for the customer to accept on WhatsApp — work cannot begin yet' },
   ACCEPTED:   { bg: '#dcfce7', border: '#86efac', color: '#166534', icon: '✅', text: 'Accepted by customer — work may begin' },
   DECLINED:   { bg: '#fee2e2', border: '#fca5a5', color: '#991b1b', icon: '❌', text: 'Customer did NOT accept — do not begin work' },

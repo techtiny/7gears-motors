@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 const LOGO = '/logo.png';
 
 const STATUS_LABEL = {
-  RECEIVED: 'Received', INSPECTING: 'Inspecting', AWAITING_APPROVAL: 'Awaiting Approval',
+  RECEIVED: 'Received – Awaiting Approval', INSPECTING: 'Inspecting', AWAITING_APPROVAL: 'Received – Awaiting Approval',
   IN_PROGRESS: 'In Progress', QUALITY_CHECK: 'Quality Check', READY_FOR_PICKUP: 'Ready for Pickup',
   DELIVERED: 'Delivered', CANCELLED: 'Cancelled',
 };

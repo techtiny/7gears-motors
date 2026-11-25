@@ -11,8 +11,8 @@ const SERVICE_TYPES = [
   'Suspension', 'Insurance Claim', 'Oil Change', 'Brake Service', 'Other'
 ];
 
-const STATUSES = ['', 'RECEIVED', 'INSPECTING', 'AWAITING_APPROVAL', 'IN_PROGRESS', 'QUALITY_CHECK', 'READY_FOR_PICKUP', 'DELIVERED', 'CANCELLED'];
-const STATUS_LABELS = { '': 'All', RECEIVED: 'Received', INSPECTING: 'Inspecting', AWAITING_APPROVAL: 'Awaiting Approval', IN_PROGRESS: 'In Progress', QUALITY_CHECK: 'Quality Check', READY_FOR_PICKUP: 'Ready', DELIVERED: 'Delivered', CANCELLED: 'Cancelled' };
+const STATUSES = ['', 'AWAITING_APPROVAL', 'INSPECTING', 'IN_PROGRESS', 'QUALITY_CHECK', 'READY_FOR_PICKUP', 'DELIVERED', 'CANCELLED'];
+const STATUS_LABELS = { '': 'All', RECEIVED: 'Received – Awaiting Approval', INSPECTING: 'Inspecting', AWAITING_APPROVAL: 'Received – Awaiting Approval', IN_PROGRESS: 'In Progress', QUALITY_CHECK: 'Quality Check', READY_FOR_PICKUP: 'Ready', DELIVERED: 'Delivered', CANCELLED: 'Cancelled' };
 
 function NewJobModal({ onClose, onSave }) {
   const [form, setForm] = useState({
@@ -40,8 +40,9 @@ function NewJobModal({ onClose, onSave }) {
         estimatedCost: form.estimatedCost ? Number(form.estimatedCost) : null,
         estimatedCompletion: form.estimatedCompletion ? form.estimatedCompletion + ':00' : null,
       };
-      await jobApi.create(payload);
-      toast.success('Service job created!');
+      const r = await jobApi.create(payload);
+      if (r.data?.termsSent) toast.success(`Job #${r.data.jobNumber} created — customer notified on WhatsApp with the Terms & Conditions to accept`, { duration: 6000 });
+      else toast(`Job #${r.data?.jobNumber || ''} created, but the WhatsApp message could not be sent${r.data?.termsError ? ` (${r.data.termsError})` : ''}. Send the Terms & Conditions from the job page.`, { icon: '⚠️', duration: 8000 });
       onSave();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to create job');

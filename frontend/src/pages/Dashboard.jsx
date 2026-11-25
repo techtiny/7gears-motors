@@ -111,7 +111,7 @@ export default function Dashboard() {
         <StatCard label="Total Vehicles"  value={data?.totalVehicles ?? 0}    icon={<Car size={21}/>}          color="#8B5CF6" bg="#F5F3FF" note="In system" />
         <StatCard label="In Progress"     value={data?.inProgress ?? 0}       icon={<Activity size={21}/>}     color="#10B981" bg="#ECFDF5" note="Currently active" />
         <StatCard label="Ready for Pickup" value={data?.readyForPickup ?? 0}  icon={<CheckCircle size={21}/>}  color="#22C55E" bg="#F0FDF4" note="Awaiting collection" />
-        <StatCard label="Awaiting Approval" value={data?.awaitingApproval ?? 0} icon={<AlertCircle size={21}/>} color="#F59E0B" bg="#FFFBEB" note="Needs action" />
+        <StatCard label="Received – Awaiting Approval" value={(data?.awaitingApproval ?? 0) + (data?.received ?? 0)} icon={<AlertCircle size={21}/>} color="#F59E0B" bg="#FFFBEB" note="Needs action" />
         <StatCard label="Quality Check"   value={data?.qualityCheck ?? 0}     icon={<Shield size={21}/>}       color="#EC4899" bg="#FDF2F8" note="Final check" />
         <StatCard label="Delivered"       value={data?.delivered ?? 0}        icon={<Package size={21}/>}      color="#6B7280" bg="#F9FAFB" note="Completed" />
       </div>
@@ -124,12 +124,6 @@ export default function Dashboard() {
             value: data?.inspecting ?? 0,
             icon: <Gauge size={18} />, color: '#F59E0B',
             sub: 'Vehicles under technical review',
-          },
-          {
-            label: 'Jobs Received',
-            value: data?.received ?? 0,
-            icon: <CalendarCheck size={18} />, color: '#3B82F6',
-            sub: 'Waiting to start inspection',
           },
           {
             label: 'Cancelled',
