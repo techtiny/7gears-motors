@@ -95,6 +95,30 @@ export const materialApi = {
   delete:       (jobId, id)       => api.delete(`/jobs/${jobId}/materials/${id}`),
   downloadPdf:  (jobId)           => api.get(`/jobs/${jobId}/materials/pdf`, { responseType: 'blob' }),
   sendApproval: (jobId)           => api.post(`/jobs/${jobId}/materials/send-approval`),
+  getApproval:  (jobId)           => api.get(`/jobs/${jobId}/materials/approval`),
+  getApprovalHistory: (jobId)     => api.get(`/jobs/${jobId}/materials/approval/history`),
+  resendApprovalLink: (jobId)     => api.post(`/jobs/${jobId}/materials/approval/resend-link`),
+};
+
+// Repair Terms & Conditions — customer must accept (WhatsApp poll or signed in person) before work begins.
+export const termsApi = {
+  get:            (jobId)       => api.get(`/jobs/${jobId}/terms`),
+  send:           (jobId)       => api.post(`/jobs/${jobId}/terms/send`),
+  resend:         (jobId)       => api.post(`/jobs/${jobId}/terms/resend`),
+  acceptInPerson: (jobId, note) => api.post(`/jobs/${jobId}/terms/accept-in-person`, { note }),
+  pdf:            (jobId)       => api.get(`/jobs/${jobId}/terms/pdf`, { responseType: 'blob' }),
+};
+
+// Public (no-login) API for the customer's estimate-approval link.
+// Separate instance so a 401 never redirects the customer to the staff login.
+const publicApi = axios.create({
+  baseURL: import.meta.env.VITE_API_URL ?? '/api',
+  headers: { 'Content-Type': 'application/json' },
+});
+
+export const publicApprovalApi = {
+  get:     (token)       => publicApi.get(`/public/material-approval/${encodeURIComponent(token)}`),
+  respond: (token, data) => publicApi.post(`/public/material-approval/${encodeURIComponent(token)}`, data),
 };
 
 export default api;

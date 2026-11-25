@@ -14,6 +14,7 @@ import Appointments from './pages/Appointments';
 import Feedback        from './pages/Feedback';
 import UserManagement from './pages/UserManagement';
 import Login          from './pages/Login';
+import ApproveEstimate from './pages/ApproveEstimate';
 
 const PAGE_TITLES = {
   '/':             'Dashboard',
@@ -132,11 +133,12 @@ export default function App() {
         position="top-center"
         toastOptions={{
           duration: 3000,
-          style: { fontSize: 13.5, borderRadius: 10, maxWidth: '90vw' },
+          style: { fontSize: 13.5, borderRadius: 10, maxWidth: 'calc(90vw / var(--ui-zoom))' },
         }}
       />
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/approve/:token" element={<ApproveEstimate />} />
         <Route path="/*" element={<RequireAuth><Layout /></RequireAuth>} />
       </Routes>
     </BrowserRouter>

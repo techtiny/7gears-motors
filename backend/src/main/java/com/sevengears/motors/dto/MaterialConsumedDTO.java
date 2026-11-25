@@ -2,6 +2,7 @@ package com.sevengears.motors.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
 
 public class MaterialConsumedDTO {
@@ -17,6 +18,9 @@ public class MaterialConsumedDTO {
     @NotNull(message = "Amount is required")
     private BigDecimal amount;
 
+    @PositiveOrZero(message = "Labour cannot be negative")
+    private BigDecimal labour;
+
     private String createdAt;
 
     public Long getId() { return id; }
@@ -31,6 +35,8 @@ public class MaterialConsumedDTO {
     public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
+    public BigDecimal getLabour() { return labour; }
+    public void setLabour(BigDecimal labour) { this.labour = labour; }
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
 }

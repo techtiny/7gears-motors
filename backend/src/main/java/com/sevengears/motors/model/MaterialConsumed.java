@@ -27,6 +27,10 @@ public class MaterialConsumed {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
+    /** Labour charge for fitting/servicing this part (null = no labour). */
+    @Column(precision = 10, scale = 2)
+    private BigDecimal labour;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -45,5 +49,11 @@ public class MaterialConsumed {
     public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
+    public BigDecimal getLabour() { return labour; }
+    public void setLabour(BigDecimal labour) { this.labour = labour; }
+    /** Part amount + labour for this line. */
+    public BigDecimal getLineTotal() {
+        return (amount != null ? amount : BigDecimal.ZERO).add(labour != null ? labour : BigDecimal.ZERO);
+    }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

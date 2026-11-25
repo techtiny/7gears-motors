@@ -89,6 +89,32 @@ public class WhatsAppService {
         }
     }
 
+    /** Sends a single-choice WhatsApp poll. {@code ref} comes back with each vote (see gateway). */
+    public String sendPoll(String toPhone, String question, java.util.List<String> options, String ref) {
+        try {
+            ResponseEntity<Map> status = restTemplate.getForEntity(gatewayUrl + "/status", Map.class);
+            if (status.getBody() == null || !Boolean.TRUE.equals(status.getBody().get("ready"))) {
+                throw new RuntimeException("WhatsApp gateway not connected.");
+            }
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(
+                    Map.of("to", toPhone, "question", question, "options", options, "ref", ref), headers);
+            ResponseEntity<Map> response = restTemplate.postForEntity(gatewayUrl + "/send-poll", request, Map.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                String messageId = (String) response.getBody().get("messageId");
+                log.info("🗳️ Poll sent → {} | ID: {}", toPhone, messageId);
+                return messageId;
+            }
+            throw new RuntimeException("Gateway returned: " + response.getStatusCode());
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("WhatsApp poll send error → {}: {}", toPhone, e.getMessage());
+            throw new RuntimeException("WhatsApp poll send failed: " + e.getMessage(), e);
+        }
+    }
+
     public boolean isEnabled() {
         try {
             ResponseEntity<Map> status = restTemplate.getForEntity(gatewayUrl + "/status", Map.class);
