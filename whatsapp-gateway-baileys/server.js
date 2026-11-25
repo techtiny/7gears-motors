@@ -3,12 +3,69 @@ const {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  decryptPollVote,
+  jidNormalizedUser,
 } = require('@whiskeysockets/baileys');
+const crypto    = require('crypto');
+const pollStore = require('./pollStore');
+const sentStore = require('./sentStore');
+
+// Where poll votes are forwarded (the 7Gears Spring Boot backend)
+const BACKEND_URL    = (process.env.BACKEND_URL || 'http://localhost:8080').replace(/\/+$/, '');
+const WEBHOOK_SECRET = process.env.WHATSAPP_WEBHOOK_SECRET || 'dev-7gears-webhook-secret';
 const { Boom } = require('@hapi/boom');
 const express = require('express');
 const qrcode  = require('qrcode');
 const pino    = require('pino');
 const fs      = require('fs');
+
+// Baileys can throw from background tasks (e.g. retry requests) while the socket is
+// reconnecting. Log those instead of letting them kill the gateway; the watchdog reconnects.
+process.on('unhandledRejection', (err) => {
+  console.error('⚠️  Unhandled rejection (gateway kept running):', err?.message || err);
+});
+process.on('uncaughtException', (err) => {
+  console.error('⚠️  Uncaught exception (gateway kept running):', err?.message || err);
+});
+
+
+// WhatsApp has moved many contacts to private "LID" addresses. With this Baileys version, messages
+// encrypted for the phone-number address of such a contact can't be decrypted on their phone
+// (single tick, "Waiting for this message"). So send to the contact's LID when WhatsApp reports one.
+const LID_FILE = require('path').join(__dirname, 'lid_map.json');
+const BAILEYS_HANDLES_LID = Number((require('@whiskeysockets/baileys/package.json').version || '6').split('.')[0]) >= 7;
+const lidCache = new Map(); // phone -> jid
+const sentTo = new Map();   // message id -> phone (to learn LIDs from receipts)
+try { Object.entries(JSON.parse(fs.readFileSync(LID_FILE, 'utf8'))).forEach(([k, v]) => lidCache.set(k, v)); } catch (_) {}
+function learnLid(phone, lidJid) {
+  if (!phone || !lidJid || lidCache.get(phone) === lidJid) return;
+  lidCache.set(phone, lidJid);
+  console.log(`🔗 Learned +${phone} → ${lidJid} (future messages go to the LID)`);
+  try {
+    const obj = {};
+    for (const [k, v] of lidCache) if (v.endsWith('@lid')) obj[k] = v;
+    fs.writeFileSync(LID_FILE, JSON.stringify(obj, null, 1));
+  } catch (e) { console.error('Could not save LID map:', e.message); }
+}
+async function recipientJid(phone) {
+  const pnJid = `${phone}@s.whatsapp.net`;
+  // Baileys 7 maps phone numbers to LIDs itself — send to the phone number and let it route.
+  if (BAILEYS_HANDLES_LID) return pnJid;
+  if (lidCache.has(phone)) return lidCache.get(phone);
+  let jid = pnJid;
+  try {
+    const ownPhone = (sock?.user?.id || '').split(':')[0].split('@')[0];
+    if (phone !== ownPhone) {
+      const [res] = await sock.onWhatsApp(pnJid);
+      if (res?.lid) jid = String(res.lid).includes('@') ? String(res.lid) : `${res.lid}@lid`;
+    }
+  } catch (e) {
+    console.error(`LID lookup failed for +${phone}, using phone number:`, e.message);
+    return pnJid; // don't cache failures
+  }
+  if (jid !== pnJid) learnLid(phone, jid);
+  return jid;
+}
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
@@ -80,6 +137,7 @@ async function connectToWhatsApp() {
 
   try {
     authState = await getAuthState();
+    await pollStore.init(dbPool);
     const { version } = await fetchLatestBaileysVersion();
 
     sock = makeWASocket({
@@ -92,9 +150,47 @@ async function connectToWhatsApp() {
       defaultQueryTimeoutMs: 60000,
       keepAliveIntervalMs: 15000,
       retryRequestDelayMs: 2000,
+      // Answer the customer's phone when it asks for a message again (couldn't decrypt it)
+      getMessage: sentStore.getMessage,
+      msgRetryCounterCache: sentStore.msgRetryCounterCache,
     });
 
+    // Remember everything we send so it can be re-sent on a retry request
+    const rawSend = sock.sendMessage.bind(sock);
+    sock.sendMessage = async (...args) => {
+      const result = await rawSend(...args);
+      try { sentStore.remember(result); } catch (_) {}
+      try {
+        const to = String(args[0] || '');
+        if (to.endsWith('@s.whatsapp.net') && result?.key?.id) {
+          sentTo.set(result.key.id, to.split('@')[0]);
+          if (sentTo.size > 2000) sentTo.delete(sentTo.keys().next().value);
+        }
+      } catch (_) {}
+      return result;
+    };
+
     sock.ev.on('creds.update', authState.saveCreds);
+
+    // Customer votes on an approval poll → decrypt → forward to backend → reply to customer
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+      for (const m of messages || []) {
+        try { await handlePollVote(m); }
+        catch (err) { console.error('Poll vote handling failed:', err.message); }
+      }
+    });
+
+    // Log delivery receipts so we can confirm messages actually reached the customer
+    // (status: 1=pending, 2=sent to server, 3=delivered to phone, 4=read, 5=played)
+    sock.ev.on('messages.update', (updates) => {
+      const names = { 0: 'ERROR', 1: 'PENDING', 2: 'SENT', 3: 'DELIVERED', 4: 'READ', 5: 'PLAYED' };
+      for (const { key, update } of updates) {
+        if (!key?.fromMe || update?.status == null) continue;
+        // A receipt from a LID for a message we sent to a phone number tells us that contact's LID
+        if ((key.remoteJid || '').endsWith('@lid') && sentTo.has(key.id)) learnLid(sentTo.get(key.id), jidNormalizedUser(key.remoteJid));
+        console.log(`📬 ${names[update.status] || update.status} → +${(key.remoteJid || '').split('@')[0]} | MsgID: ${key.id}`);
+      }
+    });
 
     sock.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect, qr } = update;
@@ -298,7 +394,7 @@ app.post('/send', async (req, res) => {
   if (!to || !message) return res.status(400).json({ error: 'to and message are required' });
   try {
     const phone  = normalizePhone(to);
-    const result = await sock.sendMessage(`${phone}@s.whatsapp.net`, { text: message });
+    const result = await sock.sendMessage(await recipientJid(phone), { text: message });
     console.log(`📱 Sent to +${phone} | MsgID: ${result.key.id}`);
     res.json({ success: true, messageId: result.key.id, to: phone });
   } catch (err) {
@@ -353,7 +449,7 @@ app.post('/send-document', async (req, res) => {
   try {
     const phone  = normalizePhone(to);
     const buffer = Buffer.from(pdfBase64, 'base64');
-    const result = await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+    const result = await sock.sendMessage(await recipientJid(phone), {
       document: buffer,
       mimetype: 'application/pdf',
       fileName: fileName,
@@ -376,7 +472,7 @@ app.post('/send-bulk', async (req, res) => {
   for (const item of messages) {
     try {
       const phone  = normalizePhone(item.to);
-      const result = await sock.sendMessage(`${phone}@s.whatsapp.net`, { text: item.message });
+      const result = await sock.sendMessage(await recipientJid(phone), { text: item.message });
       results.push({ to: phone, success: true, messageId: result.key.id });
       await delay(500);
     } catch (err) {
@@ -384,6 +480,102 @@ app.post('/send-bulk', async (req, res) => {
     }
   }
   res.json({ results });
+});
+
+// ── Approval polls ─────────────────────────────────────────────────────────
+const sha256hex = (txt) => crypto.createHash('sha256').update(Buffer.from(txt)).digest('hex');
+const uniq = (arr) => [...new Set(arr.filter(Boolean))];
+
+async function handlePollVote(m) {
+  const pu = m.message?.pollUpdateMessage;
+  if (!pu) return;
+
+  const pollId = pu.pollCreationMessageKey?.id;
+  const poll = await pollStore.get(pollId);
+  console.log(`🗳️  Poll vote received (poll ${pollId}, fromMe=${!!m.key.fromMe}, known=${!!poll})`);
+  if (!poll) return; // not one of our approval polls
+
+  // Only the customer's vote counts — a vote made from the shop's own phone is ignored,
+  // EXCEPT when the poll was sent to the shop's own number (self-test: customer == shop).
+  const ownNumber = (sock.user?.id || '').split(':')[0].split('@')[0];
+  if (m.key.fromMe && poll.to !== ownNumber) {
+    console.log('   ↳ ignored: vote came from the shop\'s own WhatsApp, not the customer');
+    return;
+  }
+
+  // WhatsApp may identify people by phone JID or by LID — try every known form
+  const norm = (j) => { try { return j ? jidNormalizedUser(j) : null; } catch { return null; } };
+  // The shop's own IDs (phone JID + LID). The LID may only be known from creds or older polls.
+  const ownIds = uniq([norm(sock.user?.id), norm(sock.user?.lid), norm(authState?.state?.creds?.me?.id),
+                       norm(authState?.state?.creds?.me?.lid), poll.creatorJid, poll.creatorLid]);
+  const keyIds = uniq([m.key.participant, m.key.remoteJid, m.key.senderPn, m.key.participantPn,
+                       m.key.senderLid, m.key.remoteJidAlt, m.key.participantAlt].map(norm));
+  // Customer vote: voter is the chat partner. Own-phone vote (self-test): voter is the shop itself.
+  const voters   = m.key.fromMe ? uniq([...ownIds, ...keyIds]) : uniq([...keyIds, ...ownIds]);
+  const creators = ownIds;
+  const pollEncKey = Buffer.from(poll.secret, 'base64');
+
+  let vote = null, voterJid = null;
+  outer:
+  for (const c of creators) for (const v of voters) {
+    try {
+      vote = decryptPollVote(pu.vote, { pollEncKey, pollCreatorJid: c, pollMsgId: pollId, voterJid: v });
+      voterJid = v;
+      break outer;
+    } catch (_) { /* wrong combination — try next */ }
+  }
+  if (!vote) {
+    console.warn(`⚠️  Could not decrypt poll vote for poll ${pollId}`);
+    console.warn('   key:', JSON.stringify(m.key), '| tried creators:', creators, '| voters:', voters);
+    return;
+  }
+
+  const selected = new Set((vote.selectedOptions || []).map(h => Buffer.from(h).toString('hex')));
+  const optionIndex = poll.options.findIndex(o => selected.has(sha256hex(o)));
+  if (optionIndex < 0) { console.log(`🗳️  Vote cleared on poll ${pollId}`); return; }
+
+  console.log(`🗳️  Poll vote "${poll.options[optionIndex]}" from ${voterJid} (poll ${pollId})`);
+
+  let reply = null;
+  try {
+    const r = await fetch(`${BACKEND_URL}/api/public/whatsapp/poll-vote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Webhook-Secret': WEBHOOK_SECRET },
+      body: JSON.stringify({ ref: poll.ref, optionIndex, option: poll.options[optionIndex], voter: voterJid }),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) console.error(`Backend rejected poll vote (${r.status}):`, body);
+    reply = body.reply || null;
+  } catch (err) {
+    console.error('Could not reach backend for poll vote:', err.message);
+  }
+  if (reply) await sock.sendMessage(m.key.remoteJid, { text: reply });
+}
+
+app.post('/send-poll', async (req, res) => {
+  const { to, question, options, ref } = req.body;
+  if (!clientReady) return res.status(503).json({ error: 'WhatsApp not connected.' });
+  if (!to || !question || !Array.isArray(options) || options.length < 2 || !ref)
+    return res.status(400).json({ error: 'to, question, options (2+) and ref are required' });
+  try {
+    const phone  = normalizePhone(to);
+    const secret = crypto.randomBytes(32);
+    const result = await sock.sendMessage(await recipientJid(phone), {
+      poll: { name: question, values: options, selectableCount: 1, messageSecret: secret },
+    });
+    await pollStore.save({
+      id: result.key.id, ref, options, to: phone,
+      secret: secret.toString('base64'),
+      creatorJid: jidNormalizedUser(sock.user.id),
+      creatorLid: (sock.user.lid || authState?.state?.creds?.me?.lid) ? jidNormalizedUser(sock.user.lid || authState.state.creds.me.lid) : null,
+      createdAt: Date.now(),
+    });
+    console.log(`🗳️  Poll sent to +${phone} | MsgID: ${result.key.id}`);
+    res.json({ success: true, messageId: result.key.id, to: phone });
+  } catch (err) {
+    console.error('Poll send failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 function normalizePhone(phone) {

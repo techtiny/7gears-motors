@@ -26,6 +26,8 @@ public class ServiceJobService {
     private final CustomerRepository customerRepository;
     private final ServiceImageRepository imageRepository;
     private final WhatsAppService whatsAppService;
+    @org.springframework.beans.factory.annotation.Autowired @org.springframework.context.annotation.Lazy
+    private TermsService termsService;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
@@ -113,6 +115,7 @@ public class ServiceJobService {
     public ServiceJobDTO updateStatus(Long id, ServiceStatus newStatus, String message, String sentBy) {
         ServiceJob job = jobRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service job not found: " + id));
+        termsService.requireAcceptedBeforeWork(job, newStatus); // customer must accept T&C before work begins
         job.setStatus(newStatus);
         if (newStatus == ServiceStatus.DELIVERED)       job.setDeliveredAt(LocalDateTime.now());
         if (newStatus == ServiceStatus.READY_FOR_PICKUP) job.setCompletedAt(LocalDateTime.now());

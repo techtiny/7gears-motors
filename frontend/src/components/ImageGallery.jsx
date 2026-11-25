@@ -22,7 +22,7 @@ function Lightbox({ images, startIndex, onClose }) {
       )}
       <img src={images[idx].url} alt={images[idx].originalName || ''}
         onClick={e => e.stopPropagation()}
-        style={{ maxWidth: '90vw', maxHeight: '88vh', objectFit: 'contain', borderRadius: 8, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} />
+        style={{ maxWidth: 'calc(90vw / var(--ui-zoom))', maxHeight: 'calc(88vh / var(--ui-zoom))', objectFit: 'contain', borderRadius: 8, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} />
       {idx < images.length - 1 && (
         <button type="button" onClick={e => { e.stopPropagation(); next(); }}
           style={{ position: 'absolute', right: 16, background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

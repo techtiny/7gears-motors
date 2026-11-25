@@ -5,6 +5,7 @@ import StatusBadge from '../components/StatusBadge';
 import StatusStepper from '../components/StatusStepper';
 import ImageGallery from '../components/ImageGallery';
 import MaterialConsumed from '../components/MaterialConsumed';
+import TermsApproval from '../components/TermsApproval';
 import { ArrowLeft, Send, ChevronDown, Phone, Car, User, IndianRupee, Clock, MessageCircle, CheckCheck, Check, Star, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -239,6 +240,9 @@ export default function ServiceDetail() {
       <div style={{ marginBottom: 20 }}>
         <ImageGallery jobId={id} />
       </div>
+
+      {/* Terms & Conditions — must be accepted before work begins */}
+      <TermsApproval jobId={id} jobStatus={job.status} onChanged={loadJob} />
 
       {/* Material Consumed */}
       <div style={{ marginBottom: 20 }}>

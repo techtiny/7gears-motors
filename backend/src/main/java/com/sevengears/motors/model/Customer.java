@@ -40,14 +40,14 @@ public class Customer {
     @Column(name = "service_reminder_enabled")
     private Boolean serviceReminderEnabled = true;
 
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Vehicle> vehicles;
 
     @PrePersist
-    protected void onCreate() { createdAt = LocalDateTime.now(); }
+    protected void onCreate() { if (createdAt == null) createdAt = LocalDateTime.now(); }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -70,6 +70,7 @@ public class Customer {
     public Boolean getServiceReminderEnabled() { return serviceReminderEnabled; }
     public void setServiceReminderEnabled(Boolean serviceReminderEnabled) { this.serviceReminderEnabled = serviceReminderEnabled; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public List<Vehicle> getVehicles() { return vehicles; }
     public void setVehicles(List<Vehicle> vehicles) { this.vehicles = vehicles; }
 }

@@ -6,6 +6,9 @@ import com.sevengears.motors.repository.CustomerRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -50,6 +53,8 @@ public class CustomerService {
         c.setPhone(dto.getPhone());
         c.setEmail(dto.getEmail());
         c.setAddress(dto.getAddress());
+        LocalDateTime added = parseAddedDate(dto.getCreatedAt(), c.getCreatedAt());
+        if (added != null) c.setCreatedAt(added);
         return toDTO(customerRepository.save(c));
     }
 
@@ -74,6 +79,24 @@ public class CustomerService {
         c.setPhone(dto.getPhone());
         c.setEmail(dto.getEmail());
         c.setAddress(dto.getAddress());
+        c.setCreatedAt(parseAddedDate(dto.getCreatedAt(), null)); // null → defaults to now on save
         return c;
+    }
+
+    /**
+     * Accepts "yyyy-MM-dd" (from the date picker) or a full ISO date-time.
+     * For a date-only value, keeps the existing time of day if the date is unchanged,
+     * otherwise uses the current time of day. Blank → null (no change / default to now).
+     */
+    private LocalDateTime parseAddedDate(String value, LocalDateTime existing) {
+        if (value == null || value.isBlank()) return null;
+        String v = value.trim();
+        if (v.length() > 10) return LocalDateTime.parse(v);
+        LocalDate date = LocalDate.parse(v);
+        if (date.isAfter(LocalDate.now()))
+            throw new IllegalArgumentException("Added date cannot be in the future");
+        if (existing != null && existing.toLocalDate().equals(date)) return existing;
+        LocalTime time = existing != null ? existing.toLocalTime() : LocalTime.now();
+        return LocalDateTime.of(date, time);
     }
 }

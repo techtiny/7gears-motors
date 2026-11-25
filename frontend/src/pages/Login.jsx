@@ -36,7 +36,7 @@ export default function Login() {
 
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: 'calc(100vh / var(--ui-zoom))', display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'linear-gradient(135deg, #1a0a00 0%, #7C2D12 40%, #C2410C 100%)',
       padding: 20,
     }}>
